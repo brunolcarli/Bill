@@ -16,9 +16,10 @@ class Season(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     description = models.TextField()
-    # TODO link to a tournament
-
-    league = models.ForeignKey(
+    season_tournaments = models.ManyToManyField(
+        'abp.Tournament'
+    )
+    season_league = models.ForeignKey(
         'abp.League',
         on_delete=models.CASCADE,
         null=True
@@ -33,9 +34,13 @@ class Tournament(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     description = models.TextField()
-
-    # TODO link to season
-    # TODO link to trainers
+    tournament_season = models.ForeignKey(
+        'abp.Season',
+        on_delete=models.CASCADE,
+    )
+    tournament_trainers = models.ManyToManyField(
+        'abp.Trainer'
+    )
 
 
 class League(models.Model):
@@ -47,8 +52,13 @@ class League(models.Model):
     end_date = models.DateField()
     description = models.TextField()
 
-    # TODO link to season
-    # TODO link to trainers
+    league_season = models.ForeignKey(
+        'abp.Season',
+        on_delete=models.CASCADE,
+    )
+    league_trainers = models.ManyToManyField(
+        'abp.Trainer'
+    )
 
 
 class Leader(models.Model):
@@ -75,7 +85,10 @@ class Leader(models.Model):
     )
 
     # TODO pokemon type
-    # TODO link to league
+    league_season = models.ForeignKey(
+        'abp.League',
+        on_delete=models.CASCADE,
+    )
     # TODO link to battles
 
 
@@ -100,8 +113,9 @@ class TrainerBattle(models.Model):
     '''
     battle_datetime = models.DateTimeField(auto_now_add=True)
 
-    # TODO link to trainer 1 and 2
-    # TODO link to winner (a trainer)
+    trainer_red_id = models.IntegerField()
+    trainer_blue_id = models.IntegerField()
+    winner_id = models.IntegerField()
 
 
 class LeagueBattle(models.Model):
@@ -109,9 +123,15 @@ class LeagueBattle(models.Model):
         Defines a Battle between a trainer and a league leader.
     '''
     battle_datetime = models.DateTimeField(auto_now_add=True)
-    winner_nickname = models.CharField(max_length=25, null=False, blank=False)
-    # TODO link to trainer
-    # TODO link to laeder
+    winner_id = models.IntegerField()
+    battling_trainer = models.ForeignKey(
+        'abp.Trainer',
+        on_delete=models.CASCADE,
+    )
+    battling_leader = models.ForeignKey(
+        'abp.Leader',
+        on_delete=models.CASCADE,
+    )
 
 
 class LeagueScore(models.Model):
@@ -120,7 +140,10 @@ class LeagueScore(models.Model):
     '''
     reference = models.CharField(max_length=100, null=False, blank=False)
 
-    # TODO link to a league
+    league_reference = models.ForeignKey(
+        'abp.League',
+        on_delete=models.CASCADE,
+    )
 
 
 class TournamentScore(models.Model):
@@ -129,4 +152,7 @@ class TournamentScore(models.Model):
     '''
     reference = models.CharField(max_length=100, null=False, blank=False)
 
-    # TODO link to a tournament
+    tournament_reference = models.ForeignKey(
+        'abp.Tournament',
+        on_delete=models.CASCADE,
+    )
