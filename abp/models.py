@@ -12,7 +12,7 @@ class Season(models.Model):
     '''
         Defines a Season.
     '''
-    reference = models.CharField(max_length=100, null=False, blank=False)
+    reference = models.CharField(max_length=100, null=False, blank=False, unique=True)
     start_date = models.DateField()
     end_date = models.DateField()
     description = models.TextField()
