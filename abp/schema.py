@@ -1,8 +1,11 @@
 import graphene
-from abp.models import Season
+from abp.models import Season, Tournament
 from graphql_relay import from_global_id
 
 
+#######################################################
+#                  GraphQL Types
+#######################################################
 class SeasonType(graphene.ObjectType):
     class Meta:
         interfaces = (graphene.relay.Node,)
@@ -16,11 +19,35 @@ class SeasonType(graphene.ObjectType):
     # TODO add league
 
 
+class TournamentType(graphene.ObjectType):
+    class Meta:
+        interfaces = (graphene.relay.Node,)
+
+    name = graphene.String()
+    start_date = graphene.Date()
+    end_date = graphene.Date()
+    description = graphene.String()
+
+    # TODO link to season
+    # TODO link to trainers
+
+
+#######################################################
+#                  Relay Connections
+#######################################################
 class SeasonlConnection(graphene.relay.Connection):
     class Meta:
         node = SeasonType
 
 
+class TournamentConnection(graphene.relay.Connection):
+    class Meta:
+        node = TournamentType
+
+
+#######################################################
+#                  GraphQL Query
+#######################################################
 class Query(object):
     '''
         ABP Queries
@@ -28,7 +55,7 @@ class Query(object):
     node = graphene.relay.Node.Field()
 
     ###################################################
-    #                       Seasons                   #
+    #                       Seasons
     ###################################################
     seasons = graphene.relay.ConnectionField(
         SeasonlConnection
@@ -36,7 +63,16 @@ class Query(object):
     def resolve_seasons(self, info, **kwargs):
         return Season.objects.all()
 
+    tournaments = graphene.relay.ConnectionField(
+        TournamentConnection
+    )
+    def resolve_tournaments(self, info, **kwargs):
+        return Tournament.objects.all()
 
+
+#######################################################
+#                  Create Mutations
+#######################################################
 class CreateSeason(graphene.relay.ClientIDMutation):
     '''
         Creates a season.
@@ -76,6 +112,10 @@ class CreateSeason(graphene.relay.ClientIDMutation):
     
         return CreateSeason(season)
 
+
+#######################################################
+#                  Update Mutations
+#######################################################
 class UpdateSeason(graphene.relay.ClientIDMutation):
     '''
         Updates a season information.
@@ -119,6 +159,10 @@ class UpdateSeason(graphene.relay.ClientIDMutation):
             season.save()
             return UpdateSeason(season)
 
+
+#######################################################
+#                  Delete Mutations
+#######################################################
 class DeleteSeason(graphene.relay.ClientIDMutation):
     '''
         Deletes a season.
@@ -147,6 +191,9 @@ class DeleteSeason(graphene.relay.ClientIDMutation):
             return DeleteSeason(season)
 
 
+#######################################################
+#                  Main Mutation
+#######################################################
 class Mutation:
     # Create
     create_season = CreateSeason.Field()
