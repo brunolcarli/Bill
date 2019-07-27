@@ -1,5 +1,5 @@
 import graphene
-from abp.models import Season, Tournament
+from abp.models import Season, Tournament, League
 from graphql_relay import from_global_id
 
 
@@ -38,6 +38,17 @@ class TournamentType(graphene.ObjectType):
     # TODO link to trainers
 
 
+class LeagueType(graphene.ObjectType):
+    class Meta:
+        interfaces = (graphene.relay.Node,)
+
+    # TODO: Think a way to inherit repeated fields from another generic class
+    reference = graphene.String()
+    start_date = graphene.Date()
+    end_date = graphene.Date()
+    description = graphene.String()
+
+
 #######################################################
 #                  Relay Connections
 #######################################################
@@ -49,6 +60,11 @@ class SeasonlConnection(graphene.relay.Connection):
 class TournamentConnection(graphene.relay.Connection):
     class Meta:
         node = TournamentType
+
+
+class LeagueConnection(graphene.relay.Connection):
+    class Meta:
+        node = LeagueType
 
 
 #######################################################
@@ -69,11 +85,23 @@ class Query(object):
     def resolve_seasons(self, info, **kwargs):
         return Season.objects.all()
 
+    ###################################################
+    #                       Tournaments
+    ###################################################
     tournaments = graphene.relay.ConnectionField(
         TournamentConnection
     )
     def resolve_tournaments(self, info, **kwargs):
         return Tournament.objects.all()
+
+    ###################################################
+    #                       Leagues
+    ###################################################
+    leagues = graphene.relay.ConnectionField(
+        LeagueConnection
+    )
+    def resolve_leagues(self, info, **kwargs):
+        return League.objects.all()
 
 
 #######################################################
