@@ -1,5 +1,5 @@
 import graphene
-from abp.models import Season, Tournament, League
+from abp.models import Season, Tournament, League, Trainer
 from graphql_relay import from_global_id
 
 
@@ -54,6 +54,23 @@ class LeagueType(graphene.ObjectType):
     description = graphene.String()
 
 
+# TODO class LeaderType
+
+
+class TrainerType(graphene.ObjectType):
+    class Meta:
+        interfaces = (graphene.relay.Node,)
+
+    nickname = graphene.String()
+    registration_datetime = graphene.DateTime()
+    num_wins = graphene.Int()
+    num_losses = graphene.Int()
+    num_battles = graphene.Int()
+
+    # TODO link to scores
+    # TODO link to battles
+
+
 #######################################################
 #                  Relay Connections
 #######################################################
@@ -70,6 +87,11 @@ class TournamentConnection(graphene.relay.Connection):
 class LeagueConnection(graphene.relay.Connection):
     class Meta:
         node = LeagueType
+
+
+class TrainerConnection(graphene.relay.Connection):
+    class Meta:
+        node = TrainerType
 
 
 #######################################################
@@ -107,6 +129,15 @@ class Query(object):
     )
     def resolve_leagues(self, info, **kwargs):
         return League.objects.all()
+
+    ###################################################
+    #                       Trainers
+    ###################################################
+    trainers = graphene.relay.ConnectionField(
+        TrainerConnection
+    )
+    def resolve_trainers(self, info, **kwargs):
+        return Trainer.objects.all()
 
 
 #######################################################
