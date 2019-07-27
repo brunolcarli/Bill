@@ -113,6 +113,63 @@ class CreateSeason(graphene.relay.ClientIDMutation):
         return CreateSeason(season)
 
 
+class CreateTournament(graphene.relay.ClientIDMutation):
+    '''
+        Creates a tournament
+    '''
+    tournament = graphene.Field(
+        TournamentType
+    )
+
+    class Input:
+        name = graphene.String(
+            required=True
+        )
+        start_date = graphene.Date()
+        end_date = graphene.Date()
+        description = graphene.String()
+        season_id = graphene.ID(
+            required=True
+        )
+
+    def mutate_and_get_payload(self, info, **_input):
+        name = _input.get('name')
+        start_date = _input.get('start_date')
+        end_date = _input.get('end_date')
+        description = _input.get('description', '')
+        season_global_id = _input.get('season_id')
+
+        kind, season_id = from_global_id(season_global_id)
+
+        # Verifica que o id é de uma Season
+        if not kind == 'SeasonType':
+            raise Exception(
+                'The ID doesnt match with a Season object!'
+            )
+
+        try:
+            tournament_season = Season.objects.get(id=season_id)
+        except Season.DoesNotExist:
+            raise Exception(
+                'Sorry, the given Season does not exist!'
+            )
+
+        try:
+            tournament = Tournament.objects.create(
+                name=name,
+                start_date=start_date,
+                end_date=end_date,
+                description=description,
+                tournament_season=tournament_season
+            )
+        except Exception as ex:
+            raise Exception(ex)
+
+        else:
+            tournament.save()
+            return CreateTournament(tournament)
+
+
 #######################################################
 #                  Update Mutations
 #######################################################
@@ -160,6 +217,59 @@ class UpdateSeason(graphene.relay.ClientIDMutation):
             return UpdateSeason(season)
 
 
+class UpdateTournament(graphene.relay.ClientIDMutation):
+    '''
+        Updates a tournament
+    '''
+    tournament = graphene.Field(
+        TournamentType
+    )
+
+    class Input:
+        id = graphene.ID(
+            required=True
+        )
+        name = graphene.String()
+        start_date = graphene.Date()
+        end_date = graphene.Date()
+        description = graphene.String()
+
+    def mutate_and_get_payload(self, info, **_input):
+        global_id = _input.get('id')
+        name = _input.get('name')
+        start_date = _input.get('start_date')
+        end_date = _input.get('end_date')
+        description = _input.get('description')
+
+        kind, tournament_id = from_global_id(global_id)
+
+        # Verifica que o id é de um Tournament
+        if not kind == 'TournamentType':
+            raise Exception(
+                'The ID doesnt match with a Tournament object!'
+            )
+
+        try:
+            tournament = Tournament.objects.get(id=tournament_id)
+        except Tournament.DoesNotExist:
+            raise Exception(
+                'Sorry, the given Tournament does not exist!'
+            )
+
+        else:
+            if name:
+                tournament.name = name
+            if start_date:
+                tournament.start_date = start_date
+            if end_date:
+                tournament.end_date = end_date
+            if description:
+                tournament.description = description
+            tournament.save()
+
+            return UpdateTournament(tournament)
+
+
 #######################################################
 #                  Delete Mutations
 #######################################################
@@ -191,15 +301,53 @@ class DeleteSeason(graphene.relay.ClientIDMutation):
             return DeleteSeason(season)
 
 
+class DeleteTournament(graphene.relay.ClientIDMutation):
+    '''
+        Deletes a tournament
+    '''
+    tournament = graphene.Field(
+        TournamentType
+    )
+
+    class Input:
+        id = graphene.ID(
+            required=True
+        )
+
+    def mutate_and_get_payload(self, info, **_input):
+        global_id = _input.get('id')
+        kind, tournament_id = from_global_id(global_id)
+
+        # Verifica que o id é de um Tournament
+        if not kind == 'TournamentType':
+            raise Exception(
+                'The ID doesnt match with a Tournament object!'
+            )
+
+        try:
+            tournament = Tournament.objects.get(id=tournament_id)
+        except Tournament.DoesNotExist:
+            raise Exception(
+                'Sorry, the given Tournament does not exist!'
+            )
+
+        else:
+            tournament.delete()
+            return DeleteTournament(tournament)
+
+
 #######################################################
 #                  Main Mutation
 #######################################################
 class Mutation:
     # Create
     create_season = CreateSeason.Field()
+    create_tournament = CreateTournament.Field()
 
     # Update
     update_season = UpdateSeason.Field()
+    update_tournament = UpdateTournament.Field()
 
     # Delete
     delete_season = DeleteSeason.Field()
+    delete_tournament = DeleteTournament.Field()
