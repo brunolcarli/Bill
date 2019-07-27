@@ -142,7 +142,7 @@ class Event(models.Model):
 
     trainer_reference = models.ForeignKey(Trainer, on_delete=models.CASCADE)
     event_key = models.CharField(max_length=50, null=False, blank=False)
-    score_key = models.CharField(max_length=50, null=False, blank=False)
+    score_key = models.CharField(max_length=50)
 
 
 class TrainerBattle(models.Model):
@@ -170,6 +170,19 @@ class LeagueBattle(models.Model):
         'abp.Leader',
         on_delete=models.CASCADE,
     )
+
+
+class Score(models.Model):
+    '''
+        Defines an score.
+        A score is related to an specific event, and can be either
+        a League Score or a Tournament Score.
+    '''
+    class Meta:
+        unique_together = ('event_reference', 'score_key')
+
+    event_reference = models.ForeignKey(Event, on_delete=models.CASCADE)
+    score_key = models.CharField(max_length=50, null=False, blank=False)
 
 
 class LeagueScore(models.Model):
