@@ -15,8 +15,14 @@ class SeasonType(graphene.ObjectType):
     end_date = graphene.Date()
     description = graphene.String()
 
-    # TODO add tournaments
+    tournaments = graphene.relay.ConnectionField(
+        'abp.schema.TournamentConnection'
+    )
+
     # TODO add league
+
+    def resolve_tournaments(self, info, **kwargs):
+        return self.tournament_set.all()
 
 
 class TournamentType(graphene.ObjectType):
