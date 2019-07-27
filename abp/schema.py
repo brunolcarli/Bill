@@ -295,6 +295,32 @@ class CreateLeague(graphene.relay.ClientIDMutation):
             return CreateLeague(league)
 
 
+class CreateTrainer(graphene.relay.ClientIDMutation):
+    '''
+        Creates a trainer.
+    '''
+    trainer = graphene.Field(
+        TrainerType
+    )
+
+    class Input:
+        nickname = graphene.String(required=True)
+
+    def mutate_and_get_payload(self, info, **_input):
+        nickname = _input.get('nickname')
+
+        try:
+            trainer = Trainer.objects.create(
+                nickname=nickname
+            )
+        except Exception as ex:
+            raise Exception(ex)
+
+        else:
+            trainer.save()
+            return CreateTrainer(trainer)
+
+
 #######################################################
 #                  Update Mutations
 #######################################################
@@ -447,6 +473,45 @@ class UpdateLeague(graphene.relay.ClientIDMutation):
             return UpdateLeague(league)
 
 
+class UpdateTrainer(graphene.relay.ClientIDMutation):
+    '''
+        Updates a trainer.
+    '''
+    trainer = graphene.Field(
+        TrainerType
+    )
+
+    class Input:
+        id = graphene.ID(
+            required=True
+        )
+        nickname = graphene.String()
+
+    def mutate_and_get_payload(self, info, **_input):
+        global_id = _input.get('id')
+        nickname = _input.get('nickname')
+
+        kind, trainer_id = from_global_id(global_id)
+
+        # Check if is the right ID
+        if not kind == 'TrainerType':
+            raise Exception(
+                'Wrong Trainer ID.'
+            )
+
+        try:
+            trainer = Trainer.objects.get(id=trainer_id)
+        except Trainer.DoesNotExist:
+            raise Exception(
+                'Sorry, the given trainer does not exist!'
+            )
+        else:
+            if nickname:
+                trainer.nickname = nickname
+            trainer.save()
+            return UpdateTrainer(trainer)
+
+
 #######################################################
 #                  Delete Mutations
 #######################################################
@@ -548,6 +613,40 @@ class DeleteLeague(graphene.relay.ClientIDMutation):
             return DeleteLeague(league)
 
 
+class DeleteTrainer(graphene.relay.ClientIDMutation):
+    '''
+        Deletes a trainer.
+    '''
+    trainer = graphene.Field(
+        TrainerType
+    )
+
+    class Input:
+        id = graphene.ID(
+            required=True
+        )
+
+    def mutate_and_get_payload(self, info, **_input):
+        global_id = _input.get('id')
+        kind, trainer_id = from_global_id(global_id)
+
+        # Check if is the right ID
+        if not kind == 'TrainerType':
+            raise Exception(
+                'Wrong Trainer ID.'
+            )
+
+        try:
+            trainer = Trainer.objects.get(id=trainer_id)
+        except Trainer.DoesNotExist:
+            raise Exception(
+                'Sorry, the given trainer does not exist!'
+            )
+        else:
+            trainer.delete()
+            return DeleteTrainer(trainer)
+
+
 #######################################################
 #                  Main Mutation
 #######################################################
@@ -556,13 +655,16 @@ class Mutation:
     create_season = CreateSeason.Field()
     create_tournament = CreateTournament.Field()
     create_league = CreateLeague.Field()
+    create_trainer = CreateTrainer.Field()
 
     # Update
     update_season = UpdateSeason.Field()
     update_tournament = UpdateTournament.Field()
     update_league = UpdateLeague.Field()
+    update_trainer = UpdateTrainer.Field()
 
     # Delete
     delete_season = DeleteSeason.Field()
     delete_tournament = DeleteTournament.Field()
     delete_league = DeleteLeague.Field()
+    delete_trainer = DeleteTrainer.Field()
