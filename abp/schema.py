@@ -19,10 +19,15 @@ class SeasonType(graphene.ObjectType):
         'abp.schema.TournamentConnection'
     )
 
-    # TODO add league
+    league = graphene.Field(
+        'abp.schema.LeagueType'
+    )
 
     def resolve_tournaments(self, info, **kwargs):
         return self.tournament_set.all()
+
+    def resolve_league(self, info, **kwargs):
+        return next(iter(self.league_set.all()))
 
 
 class TournamentType(graphene.ObjectType):
