@@ -204,6 +204,61 @@ class CreateTournament(graphene.relay.ClientIDMutation):
             return CreateTournament(tournament)
 
 
+class CreateLeague(graphene.relay.ClientIDMutation):
+    '''
+        Creates a league.
+    '''
+    league = graphene.Field(
+        LeagueType
+    )
+
+    class Input:
+        reference = graphene.String(required=True)
+        start_date = graphene.Date()
+        end_date = graphene.Date()
+        description = graphene.String()
+        season_id = graphene.ID(
+            required=True
+        )
+
+    def mutate_and_get_payload(self, info, **_input):
+        reference = _input.get('reference')
+        start_date = _input.get('start_date')
+        end_date = _input.get('end_date')
+        description = _input.get('description', '')
+        season_global_id = _input.get('season_id')
+
+        kind, season_id = from_global_id(season_global_id)
+
+        # Verifica que o id é de uma Season
+        if not kind == 'SeasonType':
+            raise Exception(
+                'The ID doesnt match with a Season object!'
+            )
+
+        try:
+            league_season = Season.objects.get(id=season_id)
+        except Season.DoesNotExist:
+            raise Exception(
+                'Sorry, the given Season does not exist!'
+            )
+
+        try:
+            league = League.objects.create(
+                reference=reference,
+                start_date=start_date,
+                end_date=end_date,
+                description=description,
+                league_season=league_season
+            )
+        except Exception as ex:
+            raise Exception(ex)
+
+        else:
+            league.save()
+            return CreateLeague(league)
+
+
 #######################################################
 #                  Update Mutations
 #######################################################
@@ -304,6 +359,58 @@ class UpdateTournament(graphene.relay.ClientIDMutation):
             return UpdateTournament(tournament)
 
 
+class UpdateLeague(graphene.relay.ClientIDMutation):
+    '''
+        Updates a league.
+    '''
+    league = graphene.Field(
+        LeagueType
+    )
+
+    class Input:
+        reference = graphene.String()
+        start_date = graphene.Date()
+        end_date = graphene.Date()
+        description = graphene.String()
+        id = graphene.ID(
+            required=True
+        )
+
+    def mutate_and_get_payload(self, info, **_input):
+        reference = _input.get('reference')
+        start_date = _input.get('start_date')
+        end_date = _input.get('end_date')
+        description = _input.get('description', '')
+        global_id = _input.get('id')
+
+        kind, league_id = from_global_id(global_id)
+
+        # Verifica que o id é de uma League
+        if not kind == 'LeagueType':
+            raise Exception(
+                'The ID doesnt match with a League object!'
+            )
+
+        try:
+            league = League.objects.get(id=league_id)
+        except League.DoesNotExist:
+            raise Exception(
+                'Sorry, the given League does not exist!'
+            )
+        else:
+            if reference:
+                league.reference = reference
+            if start_date:
+                league.start_date = start_date
+            if end_date:
+                league.end_date = end_date
+            if description:
+                league.description = description
+            league.save()
+
+            return UpdateLeague(league)
+
+
 #######################################################
 #                  Delete Mutations
 #######################################################
@@ -370,6 +477,41 @@ class DeleteTournament(graphene.relay.ClientIDMutation):
             return DeleteTournament(tournament)
 
 
+class DeleteLeague(graphene.relay.ClientIDMutation):
+    '''
+        Deletes a league.
+    '''
+    league = graphene.Field(
+        LeagueType
+    )
+
+    class Input:
+        id = graphene.ID(
+            required=True
+        )
+
+    def mutate_and_get_payload(self, info, **_input):
+        global_id = _input.get('id')
+        kind, league_id = from_global_id(global_id)
+
+        # Verifica que o id é de uma League
+        if not kind == 'LeagueType':
+            raise Exception(
+                'The ID doesnt match with a League object!'
+            )
+
+        try:
+            league = League.objects.get(id=league_id)
+        except League.DoesNotExist:
+            raise Exception(
+                'Sorry, the given League does not exist!'
+            )
+        else:
+            league.delete()
+
+            return DeleteLeague(league)
+
+
 #######################################################
 #                  Main Mutation
 #######################################################
@@ -377,11 +519,14 @@ class Mutation:
     # Create
     create_season = CreateSeason.Field()
     create_tournament = CreateTournament.Field()
+    create_league = CreateLeague.Field()
 
     # Update
     update_season = UpdateSeason.Field()
     update_tournament = UpdateTournament.Field()
+    update_league = UpdateLeague.Field()
 
     # Delete
     delete_season = DeleteSeason.Field()
     delete_tournament = DeleteTournament.Field()
+    delete_league = DeleteLeague.Field()
