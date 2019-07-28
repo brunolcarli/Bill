@@ -124,6 +124,9 @@ class TrainerType(graphene.ObjectType):
     tournament_scores = graphene.relay.ConnectionField(
         'abp.schema.TournamentScoreConnection'
     )
+    league_scores = graphene.relay.ConnectionField(
+        'abp.schema.LeagueScoreConnection'
+    )
     global_status = graphene.Field(
         TrainerGlobalStatus
     )
@@ -134,6 +137,9 @@ class TrainerType(graphene.ObjectType):
     def resolve_tournament_scores(self, info, **kwargs):
         return self.tournamentscore_set.all()
 
+    def resolve_league_scores(self, info, **kwargs):
+        return self.leaguescore_set.all()
+
     def resolve_global_status(self, info, **kwargs):
         status = TrainerGlobalStatus(
             num_wins=self.num_wins,
@@ -142,7 +148,6 @@ class TrainerType(graphene.ObjectType):
         )
         return status
 
-    # TODO link to league scores
     # TODO link to battles
 
 
