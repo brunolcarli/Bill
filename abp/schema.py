@@ -59,6 +59,13 @@ class LeagueType(graphene.ObjectType):
     start_date = graphene.Date()
     end_date = graphene.Date()
     description = graphene.String()
+    
+    registered_trainers = graphene.relay.ConnectionField(
+        'abp.schema.TrainerConnection'
+    )
+
+    def resolve_registered_trainers(self, info, **kwargs):
+        return [t.trainer_reference for t in self.leaguescore_set.all()]
 
 
 # TODO class LeaderType
@@ -106,6 +113,7 @@ class TrainerGlobalStatus(graphene.ObjectType):
     num_wins = graphene.Int()
     num_losses = graphene.Int()
     num_battles = graphene.Int()
+
 
 class TrainerType(graphene.ObjectType):
     class Meta:
