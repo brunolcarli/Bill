@@ -132,19 +132,6 @@ class Trainer(models.Model):
     # TODO link to battles
 
 
-class Event(models.Model):
-    '''
-        Defines an event on the season that a player can participate.
-        It could be a Tournament or a League. Each event has it own score.
-    '''
-    class Meta:
-        unique_together = ('trainer_reference', 'event_key')
-
-    trainer_reference = models.ForeignKey(Trainer, on_delete=models.CASCADE)
-    event_key = models.CharField(max_length=50, null=False, blank=False)
-    score_key = models.CharField(max_length=50)
-
-
 class TrainerBattle(models.Model):
     '''
         Defines a battle between two trainers.
@@ -172,33 +159,26 @@ class LeagueBattle(models.Model):
     )
 
 
-class Score(models.Model):
-    '''
-        Defines an score.
-        A score is related to an specific event, and can be either
-        a League Score or a Tournament Score.
-    '''
-    class Meta:
-        unique_together = ('event_reference', 'score_key')
-
-    event_reference = models.ForeignKey(Event, on_delete=models.CASCADE)
-    score_key = models.CharField(max_length=50, null=False, blank=False)
-
-
 class LeagueScore(models.Model):
     '''
         Defines a trainer score based on an league.
     '''
+    class Meta:
+        unique_together = [['league_reference', 'trainer_reference']]
+
     reference = models.CharField(
         max_length=100,
         null=False,
         blank=False,
         unique=True
     )
-
     league_reference = models.ForeignKey(
         'abp.League',
         on_delete=models.CASCADE,
+    )
+    trainer_reference = models.ForeignKey(
+        'abp.Trainer',
+        on_delete=models.CASCADE
     )
 
 
@@ -206,14 +186,21 @@ class TournamentScore(models.Model):
     '''
         Defines a trainer score based on an tournament.
     '''
+    class Meta:
+        unique_together = [['tournament_reference', 'trainer_reference']]
+
     reference = models.CharField(
         max_length=100,
         null=False,
         blank=False,
         unique=True
     )
-
     tournament_reference = models.ForeignKey(
         'abp.Tournament',
         on_delete=models.CASCADE,
+    )
+    trainer_reference = models.ForeignKey(
+        'abp.Trainer',
+        on_delete=models.CASCADE,
+        null=True
     )

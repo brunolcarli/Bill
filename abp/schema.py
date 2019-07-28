@@ -1,34 +1,8 @@
 import graphene
-from abp.models import (Season, Tournament, League, Trainer, Event,
-                        Score, LeagueScore, TournamentScore)
-from graphql_relay import from_global_id, to_global_id
+from abp.models import (Season, Tournament, League, Trainer, LeagueScore,
+                        TournamentScore)
+from graphql_relay import from_global_id
 
-
-#######################################################
-#                  Interfaces
-#######################################################
-class TournamentEvent(graphene.Interface):
-    tournament = graphene.Field(
-        'abp.schema.TournamentType'
-    )
-
-
-class LeagueEvent(graphene.Interface):
-    league = graphene.Field(
-        'abp.schema.LeagueType'
-    )
-
-
-class TournamentScoreInterface(graphene.Interface):
-    tournament_score = graphene.Field(
-        'abp.schema.TournamentScoreType'
-    )
-
-
-class LeagueScoreInterface(graphene.Interface):
-    league_score = graphene.Field(
-        'abp.schema.LeagueScoreType'
-    )
 
 
 #######################################################
@@ -93,9 +67,15 @@ class LeagueScoreType(graphene.ObjectType):
     league = graphene.Field(
         'abp.schema.LeagueType'
     )
+    trainer = graphene.Field(
+        'abp.schema.TrainerType'
+    )
 
     def resolve_league(self, info, **kwargs):
         return self.league_reference
+
+    def resolve_trainer(self, info, **kwargs):
+        return self.trainer_reference
 
 
 class TournamentScoreType(graphene.ObjectType):
@@ -106,92 +86,15 @@ class TournamentScoreType(graphene.ObjectType):
     tournament = graphene.Field(
         'abp.schema.TournamentType'
     )
+    trainer = graphene.Field(
+        'abp.schema.TrainerType'
+    )
 
     def resolve_tournament(self, info, **kwargs):
         return self.tournament_reference
 
-
-class ScoreType(graphene.ObjectType):
-    class Meta:
-        interfaces = (
-            graphene.relay.Node,
-            LeagueScoreInterface,
-            TournamentScoreInterface
-        )
-
-    event = graphene.Field(
-        'abp.schema.EventType'
-    )
-    score_key = graphene.ID()
-
-    def resolve_event(self, info, **kwargs):
-        return self.event_reference
-
-    def resolve_league_score(self, info, **kwargs):
-        kind, score_id = from_global_id(self.score_key)
-        if not kind == 'LeagueScoreType':
-            return None
-        else:
-            try:
-                league_score = LeagueScore.objects.get(id=score_id)
-            except LeagueScore.DoesNotExist:
-                return None
-            else:
-                return league_score
-
-    def resolve_tournament_score(self, info, **kwargs):
-        kind, score_id = from_global_id(self.score_key)
-        if not kind == 'TournamentScoreType':
-            return None
-        else:
-            try:
-                tournament_score = TournamentScore.objects.get(id=score_id)
-            except TournamentScore.DoesNotExist:
-                return None
-            else:
-                return tournament_score
-
-
-class EventType(graphene.ObjectType):
-    class Meta:
-        interfaces = (
-            graphene.relay.Node,
-            LeagueEvent,
-            TournamentEvent
-        )
-
-    trainer = graphene.Field(
-        'abp.schema.TrainerType'
-    )
-    event_key = graphene.ID()
-    score_key = graphene.ID()
-
     def resolve_trainer(self, info, **kwargs):
         return self.trainer_reference
-
-    def resolve_league(self, info, **kwargs):
-        kind, league_id = from_global_id(self.event_key)
-        if not kind == 'LeagueType':
-            return None
-        else:
-            try:
-                league = League.objects.get(id=league_id)
-            except League.DoesNotExist:
-                return None
-            else:
-                return league
-
-    def resolve_tournament(self, info, **kwargs):
-        kind, tournament_id = from_global_id(self.event_key)
-        if not kind == 'TournamentType':
-            return None
-        else:
-            try:
-                tournament = Tournament.objects.get(id=tournament_id)
-            except Tournament.DoesNotExist:
-                return None
-            else:
-                return tournament
 
 
 class TrainerType(graphene.ObjectType):
@@ -229,16 +132,6 @@ class LeagueConnection(graphene.relay.Connection):
 class TrainerConnection(graphene.relay.Connection):
     class Meta:
         node = TrainerType
-
-
-class EventConnection(graphene.relay.Connection):
-    class Meta:
-        node = EventType
-
-
-class ScoreConnection(graphene.relay.Connection):
-    class Meta:
-        node = ScoreType
 
 
 class TournamentScoreConnection(graphene.relay.Connection):
@@ -297,22 +190,13 @@ class Query(object):
         return Trainer.objects.all()
 
     ###################################################
-    #                       Events
-    ###################################################
-    events = graphene.relay.ConnectionField(
-        EventConnection
-    )
-    def resolve_events(self, info, **kwargs):
-        return Event.objects.all()
-
-    ###################################################
     #                       Scores
     ###################################################
-    scores = graphene.relay.ConnectionField(
-        ScoreConnection
+    tournament_scores = graphene.relay.ConnectionField(
+        TournamentScoreConnection
     )
-    def resolve_scores(self, info, **kwargs):
-        return Score.objects.all()
+    def resolve_tournament_scores(self, info, **kwargs):
+        return TournamentScore.objects.all()
 
 
 #######################################################
@@ -494,112 +378,6 @@ class CreateTrainer(graphene.relay.ClientIDMutation):
         else:
             trainer.save()
             return CreateTrainer(trainer)
-
-
-class CreateEvent(graphene.relay.ClientIDMutation):
-    event = graphene.Field(
-        EventType
-    )
-
-    class Input:
-        trainer = graphene.ID(required=True)
-        event_key = graphene.ID(required=True)
-
-    def mutate_and_get_payload(self, info, **_input):
-        trainer_global_id = _input.get('trainer')
-        event_global_id = _input.get('event_key')
-
-        kind, trainer_id = from_global_id(trainer_global_id)
-        # Verifica que o trainer_id é de um Trainer
-        if not kind == 'TrainerType':
-            raise Exception(
-                'The trainer ID dont match with a Trainer object!'
-            )
-
-        try:
-            trainer_reference = Trainer.objects.get(id=trainer_id)
-        except Trainer.DoesNotExist:
-            raise Exception(
-                'Sorry, the given Trainer does not exist!'
-            )
-
-        kind, event_id = from_global_id(event_global_id)
-        # Verifica qual tipo de evento foi fornecido
-        if kind == 'LeagueType': 
-            try:
-                league = League.objects.get(id=event_id)
-            except League.DoesNotExist:
-                raise Exception(
-                    'Sorry, the given League does not exist!'
-                )
-            else:
-                try:
-                    league_score = LeagueScore.objects.create(
-                        league_reference=league,
-                        reference='{} {} Scoreboard'.format(
-                            trainer_reference.nickname,
-                            league.reference
-                        )
-                    )
-                except Exception as ex:
-                    raise Exception(ex)
-                league_score.save()
-                score_key = to_global_id('LeagueScoreType', league_score.id)
-        
-        elif kind == 'TournamentType':
-            try:
-                tournament = Tournament.objects.get(id=event_id)
-            except Tournament.DoesNotExist:
-                raise Exception(
-                    'Sorry, the given Tournament does not exist!'
-                )
-            else:
-                try:
-                    tournament_score = TournamentScore.objects.create(
-                        tournament_reference=tournament,
-                        reference='{} {} Scoreboard'.format(
-                            trainer_reference.nickname,
-                            tournament.name
-                        )
-                    )
-                except Exception as ex:
-                    raise Exception(ex)
-                tournament_score.save()
-                score_key = to_global_id(
-                    'TournamentScoreType',
-                    tournament_score.id
-                )
-        else:
-            raise Exception(
-                'The given event is not valid.'
-            )
-
-        try:
-            event = Event.objects.create(
-                trainer_reference=trainer_reference,
-                event_key=event_global_id,
-                score_key='score_key'
-            )
-        except Exception as ex:
-            raise Exception(ex)
-
-        else:
-            event.save()
-            try:
-                score = Score.objects.create(
-                    score_key=score_key,
-                    event_reference=event
-                )
-            except Exception as ex:
-                raise Exception(ex)
-            score.save()
-            score_key = to_global_id(
-                'ScoreType',
-                score.id
-            )
-            event.score_key = score_key
-            event.save()
-            return CreateEvent(event)
 
 
 #######################################################
@@ -929,6 +707,76 @@ class DeleteTrainer(graphene.relay.ClientIDMutation):
 
 
 #######################################################
+#                  Other Mutations
+#######################################################
+class TournamentRegistration(graphene.relay.ClientIDMutation):
+    '''
+        Register a trainer into a tournament.
+    '''
+    tournament_score = graphene.Field(
+        TournamentScoreType
+    )
+
+    class Input:
+        trainer = graphene.ID(
+            required=True
+        )
+        tournament = graphene.ID(
+            required=True
+        )
+
+    def mutate_and_get_payload(self, info, **_input):
+        trainer_global_id = _input.get('trainer')
+        tournament_global_id = _input.get('tournament')
+
+        kind, trainer_id = from_global_id(trainer_global_id)
+        if not kind == 'TrainerType':
+            raise Exception(
+                'Wrong Trainer ID was given.'
+            )
+
+        kind, tournament_id = from_global_id(tournament_global_id)
+        if not kind == 'TournamentType':
+            raise Exception(
+                'Wrong Tournament ID was given.'
+            )
+
+        try:
+            trainer = Trainer.objects.get(id=trainer_id)
+        except Trainer.DoesNotExist:
+            raise Exception(
+                'Sorry, this trainer does not exist.'
+            )
+
+        try:
+            tournament = Tournament.objects.get(id=tournament_id)
+        except Tournament.DoesNotExist:
+            raise Exception(
+                'Sorry, this tournament does not exist.'
+            )
+
+        # TODO verificar se o torneio ja nao foi encerrado
+
+        reference = '{} registration at {}'.format(
+            trainer.nickname,
+            tournament.name
+        )
+
+        try:
+            score = TournamentScore.objects.create(
+                reference=reference,
+                tournament_reference=tournament,
+                trainer_reference=trainer
+            )
+        except Exception as ex:
+            raise Exception(ex)
+
+        else:
+            score.save()
+            return TournamentRegistration(score)
+
+
+#######################################################
 #                  Main Mutation
 #######################################################
 class Mutation:
@@ -937,7 +785,6 @@ class Mutation:
     create_tournament = CreateTournament.Field()
     create_league = CreateLeague.Field()
     create_trainer = CreateTrainer.Field()
-    create_event = CreateEvent.Field()
 
     # Update
     update_season = UpdateSeason.Field()
@@ -950,3 +797,6 @@ class Mutation:
     delete_tournament = DeleteTournament.Field()
     delete_league = DeleteLeague.Field()
     delete_trainer = DeleteTrainer.Field()
+
+    # Other
+    tournament_registration = TournamentRegistration.Field()
