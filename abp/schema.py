@@ -102,20 +102,39 @@ class TournamentScoreType(graphene.ObjectType):
         return self.trainer_reference
 
 
+class TrainerGlobalStatus(graphene.ObjectType):
+    num_wins = graphene.Int()
+    num_losses = graphene.Int()
+    num_battles = graphene.Int()
+
 class TrainerType(graphene.ObjectType):
     class Meta:
         interfaces = (graphene.relay.Node,)
 
     nickname = graphene.String()
     registration_datetime = graphene.DateTime()
-    num_wins = graphene.Int()
-    num_losses = graphene.Int()
-    num_battles = graphene.Int()
+    tournament_scores = graphene.relay.ConnectionField(
+        'abp.schema.TournamentScoreConnection'
+    )
+    global_status = graphene.Field(
+        TrainerGlobalStatus
+    )
 
     def resolve_registration_datetime(self, info, **kwargs):
         return self.registration_date
 
-    # TODO link to scores
+    def resolve_tournament_scores(self, info, **kwargs):
+        return self.tournamentscore_set.all()
+
+    def resolve_global_status(self, info, **kwargs):
+        status = TrainerGlobalStatus(
+            num_wins=self.num_wins,
+            num_losses=self.num_losses,
+            num_battles=self.num_battles
+        )
+        return status
+
+    # TODO link to league scores
     # TODO link to battles
 
 
