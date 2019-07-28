@@ -198,6 +198,12 @@ class Query(object):
     def resolve_tournament_scores(self, info, **kwargs):
         return TournamentScore.objects.all()
 
+    league_scores = graphene.ConnectionField(
+        LeagueScoreConnection
+    )
+    def resolve_league_scores(self, info, **kwargs):
+        return LeagueScore.objects.all()
+
 
 #######################################################
 #                  Create Mutations
@@ -776,6 +782,73 @@ class TournamentRegistration(graphene.relay.ClientIDMutation):
             return TournamentRegistration(score)
 
 
+class LeagueRegistration(graphene.relay.ClientIDMutation):
+    '''
+        Register a trainer into a league.
+    '''
+    league_score = graphene.Field(
+        LeagueScoreType
+    )
+
+    class Input:
+        trainer = graphene.ID(
+            required=True
+        )
+        league = graphene.ID(
+            required=True
+        )
+
+    def mutate_and_get_payload(self, info, **_input):
+        trainer_global_id = _input.get('trainer')
+        league_global_id = _input.get('league')
+
+        kind, trainer_id = from_global_id(trainer_global_id)
+        if not kind == 'TrainerType':
+            raise Exception(
+                'Wrong Trainer ID was given.'
+            )
+
+        kind, league_id = from_global_id(league_global_id)
+        if not kind == 'LeagueType':
+            raise Exception(
+                'Wrong League ID was given.'
+            )
+
+        try:
+            trainer = Trainer.objects.get(id=trainer_id)
+        except Trainer.DoesNotExist:
+            raise Exception(
+                'Sorry, this trainer does not exist.'
+            )
+
+        try:
+            league = League.objects.get(id=league_id)
+        except League.DoesNotExist:
+            raise Exception(
+                'Sorry, this league does not exist.'
+            )
+
+        # TODO verificar se a liga ja nao foi encerrada
+
+        reference = '{} registration at {}'.format(
+            trainer.nickname,
+            league.reference
+        )
+
+        try:
+            score = LeagueScore.objects.create(
+                reference=reference,
+                league_reference=league,
+                trainer_reference=trainer
+            )
+        except Exception as ex:
+            raise Exception(ex)
+
+        else:
+            score.save()
+            return LeagueRegistration(score)
+
+
 #######################################################
 #                  Main Mutation
 #######################################################
@@ -800,3 +873,4 @@ class Mutation:
 
     # Other
     tournament_registration = TournamentRegistration.Field()
+    league_registration = LeagueRegistration.Field()
