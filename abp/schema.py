@@ -40,9 +40,14 @@ class TournamentType(graphene.ObjectType):
     start_date = graphene.Date()
     end_date = graphene.Date()
     description = graphene.String()
+    registered_trainers = graphene.ConnectionField(
+        'abp.schema.TrainerConnection'
+    )
 
     # TODO link to season
-    # TODO link to trainers
+
+    def resolve_registered_trainers(self, info, **kwargs):
+        return [t.trainer_reference for t in self.tournamentscore_set.all()]
 
 
 class LeagueType(graphene.ObjectType):
@@ -106,6 +111,9 @@ class TrainerType(graphene.ObjectType):
     num_wins = graphene.Int()
     num_losses = graphene.Int()
     num_battles = graphene.Int()
+
+    def resolve_registration_datetime(self, info, **kwargs):
+        return self.registration_date
 
     # TODO link to scores
     # TODO link to battles
