@@ -104,12 +104,11 @@ class Leader(models.Model):
         blank=False
     )
 
-    # TODO pokemon type
+    pokemon_type = models.CharField(max_length=100)
     league_season = models.ForeignKey(
         'abp.League',
         on_delete=models.CASCADE,
     )
-    # TODO link to battles
 
 
 class Trainer(models.Model):
