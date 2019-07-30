@@ -1,8 +1,41 @@
 import graphene
 from abp.models import (Season, Tournament, League, Trainer, LeagueScore,
-                        TournamentScore)
+                        TournamentScore, Leader)
 from graphql_relay import from_global_id
 
+
+
+#######################################################
+#                  Enums
+#######################################################
+class PokemonTypes(graphene.Enum):
+    NORMAL = 'Normal'
+    FIRE = 'Fire'
+    WATER ='Water'
+    GRASS = 'Grass'
+    ELECTRIC = 'Electric'
+    ICE = 'Ice'
+    FIGHTING = 'Fighting'
+    POISON = 'Poison'
+    GROUND = 'Ground'
+    FLYING = 'Flying'
+    PSYCHIC = 'Psychic'
+    BUG = 'Bug'
+    ROCK = 'Rock'
+    GHOST = 'Ghost'
+    DARK = 'Dark'
+    DRAGON = 'Dragon'
+    STEEL = 'Steel'
+    FAIRY = 'Fairy'
+
+
+class Role(graphene.Enum):
+    '''
+    League Roles
+    '''
+    GYM_LEADER = 'Gym Leader'
+    ELITE_FOUR = 'Elite Four'
+    CHAMPION = 'Champion'
 
 
 #######################################################
@@ -44,8 +77,6 @@ class TournamentType(graphene.ObjectType):
         'abp.schema.TrainerConnection'
     )
 
-    # TODO link to season
-
     def resolve_registered_trainers(self, info, **kwargs):
         return [t.trainer_reference for t in self.tournamentscore_set.all()]
 
@@ -68,7 +99,26 @@ class LeagueType(graphene.ObjectType):
         return [t.trainer_reference for t in self.leaguescore_set.all()]
 
 
-# TODO class LeaderType
+class LeaderType(graphene.ObjectType):
+    class Meta:
+        interfaces = (graphene.relay.Node,)
+
+    name = graphene.String()
+    role = Role()
+    pokemon_type = PokemonTypes()
+    league_reference = graphene.Field(LeagueType)
+    global_score = graphene.Field('abp.schema.TrainerGlobalStatus')
+
+    def resolve_league_reference(self, info, **kwargs):
+        return self.league_season
+
+    def resolve_global_status(self, info, **kwargs):
+        status = TrainerGlobalStatus(
+            num_wins=self.num_wins,
+            num_losses=self.num_losses,
+            num_battles=self.num_battles
+        )
+        return status
 
 
 class LeagueScoreType(graphene.ObjectType):
@@ -184,6 +234,11 @@ class LeagueScoreConnection(graphene.relay.Connection):
         node = LeagueScoreType
 
 
+class LeaderConnection(graphene.relay.Connection):
+    class Meta:
+        node = LeaderType
+
+
 #######################################################
 #                  GraphQL Query
 #######################################################
@@ -228,6 +283,15 @@ class Query(object):
     )
     def resolve_trainers(self, info, **kwargs):
         return Trainer.objects.all()
+
+    ###################################################
+    #                       Leaders
+    ###################################################
+    leaders = graphene.relay.ConnectionField(
+        LeaderConnection
+    )
+    def resolve_leaders(self, info, **kwargs):
+        return Leader.objects.all()
 
     ###################################################
     #                       Scores
