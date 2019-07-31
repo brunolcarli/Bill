@@ -108,6 +108,7 @@ class Leader(models.Model):
     league_season = models.ForeignKey(
         'abp.League',
         on_delete=models.CASCADE,
+        null=True
     )
 
 

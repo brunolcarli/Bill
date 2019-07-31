@@ -103,7 +103,7 @@ class LeaderType(graphene.ObjectType):
     class Meta:
         interfaces = (graphene.relay.Node,)
 
-    name = graphene.String()
+    nickname = graphene.String()
     role = Role()
     pokemon_type = PokemonTypes()
     league_reference = graphene.Field(LeagueType)
@@ -112,7 +112,7 @@ class LeaderType(graphene.ObjectType):
     def resolve_league_reference(self, info, **kwargs):
         return self.league_season
 
-    def resolve_global_status(self, info, **kwargs):
+    def resolve_global_score(self, info, **kwargs):
         status = TrainerGlobalStatus(
             num_wins=self.num_wins,
             num_losses=self.num_losses,
@@ -490,6 +490,38 @@ class CreateTrainer(graphene.relay.ClientIDMutation):
             return CreateTrainer(trainer)
 
 
+class CreateLeader(graphene.relay.ClientIDMutation):
+    '''
+        Creates a leader.
+    '''
+    leader = graphene.Field(
+        LeaderType
+    )
+
+    class Input:
+        nickname = graphene.String(required=True)
+        pokemon_type = PokemonTypes()
+        role = Role(required=True)
+
+    def mutate_and_get_payload(self, info, **_input):
+        nickname = _input.get('nickname')
+        pokemon_type = _input.get('pokemon_type')
+        role = _input.get('role')
+
+        try:
+            leader = Leader.objects.create(
+                nickname=nickname,
+                pokemon_type=pokemon_type,
+                role=role
+            )
+        except Exception as ex:
+            raise Exception(ex)
+
+        else:
+            leader.save()
+            return CreateLeader(leader)
+
+
 #######################################################
 #                  Update Mutations
 #######################################################
@@ -681,6 +713,45 @@ class UpdateTrainer(graphene.relay.ClientIDMutation):
             return UpdateTrainer(trainer)
 
 
+class UpdateLeader(graphene.relay.ClientIDMutation):
+    '''
+        Updates a leader.
+    '''
+    leader = graphene.Field(
+        LeaderType
+    )
+
+    class Input:
+        id = graphene.ID(required=True)
+        nickname = graphene.String()
+        pokemon_type = PokemonTypes()
+        role = Role()
+
+    def mutate_and_get_payload(self, info, **_input):
+        global_id = _input.get('id')
+        nickname = _input.get('nickname')
+        pokemon_type = _input.get('pokemon_type')
+        role = _input.get('role')
+
+        kind, leader_id = from_global_id(global_id)
+        if not kind == 'LeaderType':
+            raise Exception('Wrong leader ID.')
+
+        try:
+            leader = Leader.objects.get(id=leader_id)
+        except Leader.DoesNotExist:
+            raise Exception('Sorry, this leader does not exist.')
+        else:
+            if nickname:
+                leader.nickname = nickname
+            if pokemon_type:
+                leader.pokemon_type = pokemon_type
+            if role:
+                leader.role = role
+            leader.save()
+            return UpdateLeader(leader)
+
+
 #######################################################
 #                  Delete Mutations
 #######################################################
@@ -814,6 +885,33 @@ class DeleteTrainer(graphene.relay.ClientIDMutation):
         else:
             trainer.delete()
             return DeleteTrainer(trainer)
+
+
+class DeleteLeader(graphene.relay.ClientIDMutation):
+    '''
+        Deletes a leader.
+    '''
+    leader = graphene.Field(
+        LeaderType
+    )
+
+    class Input:
+        id = graphene.ID(required=True)
+
+    def mutate_and_get_payload(self, info, **_input):
+        global_id = _input.get('id')
+
+        kind, leader_id = from_global_id(global_id)
+        if not kind == 'LeaderType':
+            raise Exception('Wrong leader ID.')
+
+        try:
+            leader = Leader.objects.get(id=leader_id)
+        except Leader.DoesNotExist:
+            raise Exception('Sorry, this leader does not exist.')
+        else:
+            leader.delete()
+            return DeleteLeader(leader)
 
 
 #######################################################
@@ -962,18 +1060,21 @@ class Mutation:
     create_tournament = CreateTournament.Field()
     create_league = CreateLeague.Field()
     create_trainer = CreateTrainer.Field()
+    create_leader = CreateLeader.Field()
 
     # Update
     update_season = UpdateSeason.Field()
     update_tournament = UpdateTournament.Field()
     update_league = UpdateLeague.Field()
     update_trainer = UpdateTrainer.Field()
+    update_leader = UpdateLeader.Field()
 
     # Delete
     delete_season = DeleteSeason.Field()
     delete_tournament = DeleteTournament.Field()
     delete_league = DeleteLeague.Field()
     delete_trainer = DeleteTrainer.Field()
+    delete_leader = DeleteLeader.Field()
 
     # Other
     tournament_registration = TournamentRegistration.Field()
