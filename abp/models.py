@@ -204,3 +204,4 @@ class TournamentScore(models.Model):
         on_delete=models.CASCADE,
         null=True
     )
+    battles = models.ManyToManyField(TrainerBattle)

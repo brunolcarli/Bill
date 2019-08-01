@@ -1,6 +1,6 @@
 import graphene
 from abp.models import (Season, Tournament, League, Trainer, LeagueScore,
-                        TournamentScore, Leader)
+                        TournamentScore, Leader, TrainerBattle, LeagueBattle)
 from graphql_relay import from_global_id
 
 
@@ -151,12 +151,18 @@ class TournamentScoreType(graphene.ObjectType):
     trainer = graphene.Field(
         'abp.schema.TrainerType'
     )
+    battles = graphene.relay.ConnectionField(
+        'abp.schema.TrainerBattleConnection'
+    )
 
     def resolve_tournament(self, info, **kwargs):
         return self.tournament_reference
 
     def resolve_trainer(self, info, **kwargs):
         return self.trainer_reference
+
+    def resolve_battles(self, info, **kwargs):
+        return self.battles.all()
 
 
 class TrainerGlobalStatus(graphene.ObjectType):
@@ -201,6 +207,25 @@ class TrainerType(graphene.ObjectType):
     # TODO link to battles
 
 
+class TrainerBattleType(graphene.ObjectType):
+    class Meta:
+        interfaces = (graphene.relay.Node,)
+
+    trainer_red = graphene.Field('abp.schema.TrainerType')
+    trainer_blue = graphene.Field('abp.schema.TrainerType')
+    winner = graphene.Field('abp.schema.TrainerType')
+    battle_datetime = graphene.DateTime()
+
+    def resolve_trainer_red(self, info, **kwargs):
+        return Trainer.objects.get(id=self.trainer_red_id)
+
+    def resolve_trainer_blue(self, info, **kwargs):
+        return Trainer.objects.get(id=self.trainer_blue_id)
+
+    def resolve_winner(self, info, **kwargs):
+        return Trainer.objects.get(id=self.winner_id)
+
+
 #######################################################
 #                  Relay Connections
 #######################################################
@@ -237,6 +262,11 @@ class LeagueScoreConnection(graphene.relay.Connection):
 class LeaderConnection(graphene.relay.Connection):
     class Meta:
         node = LeaderType
+
+
+class TrainerBattleConnection(graphene.relay.Connection):
+    class Meta:
+        node = TrainerBattleType
 
 
 #######################################################
@@ -307,6 +337,21 @@ class Query(object):
     )
     def resolve_league_scores(self, info, **kwargs):
         return LeagueScore.objects.all()
+
+    ###################################################
+    #                       Battles
+    ###################################################
+    trainer_battles = graphene.relay.ConnectionField(
+        TrainerBattleConnection
+    )
+    def resolve_trainer_battles(self, info, **kwargs):
+        return TrainerBattle.objects.all()
+
+    # league_battles = graphene.ConnectionField(
+    #     LeagueBattleConnection
+    # )
+    # def resolve_league_battles(self, info, **kwargs):
+    #     return LeagueBattle.objects.all()
 
 
 #######################################################
@@ -520,6 +565,105 @@ class CreateLeader(graphene.relay.ClientIDMutation):
         else:
             leader.save()
             return CreateLeader(leader)
+
+
+class CreateTrainerBattle(graphene.relay.ClientIDMutation):
+    '''
+        Creates a battle between two trainers.
+    '''
+    battle = graphene.Field(
+        TrainerBattleType
+    )
+
+    class Input:
+        trainer_red = graphene.ID(required=True)
+        trainer_blue = graphene.ID(required=True)
+        winner = graphene.ID(required=True)
+        tournament = graphene.ID(required=True)
+
+    def mutate_and_get_payload(self, info, **_input):
+        trainer_red_global_id = _input.get('trainer_red')
+        trainer_blue_global_id = _input.get('trainer_blue')
+        winner_global_id = _input.get('winner')
+        tournament_global_id = _input.get('tournament')
+
+        not_trainer_err = 'The given a ID is not a Trainer ID.'
+
+        kind, trainer_red_id = from_global_id(trainer_red_global_id)
+        if not kind == 'TrainerType':
+            raise Exception(not_trainer_err)
+
+        kind, trainer_blue_id = from_global_id(trainer_blue_global_id)
+        if not kind == 'TrainerType':
+            raise Exception(not_trainer_err)
+
+        # red e blue nao podem ser iguais
+        if trainer_red_id == trainer_blue_id:
+            raise Exception('IDs cant be identical.')
+
+        kind, winner_id = from_global_id(winner_global_id)
+        if not kind == 'TrainerType':
+            raise Exception(not_trainer_err)
+
+        # o vencedor devem ser red ou blue
+        if not winner_id == trainer_red_id and not winner_id == trainer_blue_id:
+            raise Exception('Winner must be one of the given trainers.')
+
+        kind, tournament_id = from_global_id(tournament_global_id)
+        if not kind == 'TournamentType':
+            raise Exception('The given tournament is invalid.')
+
+        try:
+            trainer_red = Trainer.objects.get(id=trainer_red_id)
+        except Trainer.DoesNotExist:
+            raise Exception('Sorry, the red trainer does not exist!')
+
+        try:
+            trainer_blue = Trainer.objects.get(id=trainer_blue_id)
+        except Trainer.DoesNotExist:
+            raise Exception('Sorry, the red trainer does not exist!')
+
+        try:
+            tournament = Tournament.objects.get(id=tournament_id)
+        except Tournament.DoesNotExist:
+            raise Exception('Sorry, the red trainer does not exist!')
+
+        # pega o score do red
+        try:
+            red_score = trainer_red.tournamentscore_set.get(
+                tournament_reference_id=tournament_id
+            )
+        except TournamentScore.DoesNotExist:
+            raise Exception(
+                'O trainer red não está registrado neste torneio.'
+            )
+
+        # Pega o score do blue
+        try:
+            blue_score = trainer_blue.tournamentscore_set.get(
+                tournament_reference_id=tournament_id
+            )
+        except TournamentScore.DoesNotExist:
+            raise Exception(
+                'O trainer blue não está registrado neste torneio.'
+            )
+
+        else:
+            try:
+                battle = TrainerBattle.objects.create(
+                    trainer_red_id=trainer_red_id,
+                    trainer_blue_id=trainer_blue_id,
+                    winner_id=winner_id
+                )
+            except Exception as ex:
+                raise Exception(ex)
+
+            blue_score.battles.add(battle)
+            red_score.battles.add(battle)
+            blue_score.save()
+            red_score.save()
+            battle.save()
+            return CreateTrainerBattle(battle)
 
 
 #######################################################
@@ -1061,6 +1205,7 @@ class Mutation:
     create_league = CreateLeague.Field()
     create_trainer = CreateTrainer.Field()
     create_leader = CreateLeader.Field()
+    create_trainer_battle = CreateTrainerBattle.Field()
 
     # Update
     update_season = UpdateSeason.Field()
