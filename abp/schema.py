@@ -587,15 +587,15 @@ class CreateTrainerBattle(graphene.relay.ClientIDMutation):
         winner_global_id = _input.get('winner')
         tournament_global_id = _input.get('tournament')
 
-        not_trainer_err = 'The given a ID is not a Trainer ID.'
+        NOT_TRAINER_ERR = 'The given a ID is not a Trainer ID.'
 
         kind, trainer_red_id = from_global_id(trainer_red_global_id)
         if not kind == 'TrainerType':
-            raise Exception(not_trainer_err)
+            raise Exception(NOT_TRAINER_ERR)
 
         kind, trainer_blue_id = from_global_id(trainer_blue_global_id)
         if not kind == 'TrainerType':
-            raise Exception(not_trainer_err)
+            raise Exception(NOT_TRAINER_ERR)
 
         # red e blue nao podem ser iguais
         if trainer_red_id == trainer_blue_id:
@@ -603,7 +603,7 @@ class CreateTrainerBattle(graphene.relay.ClientIDMutation):
 
         kind, winner_id = from_global_id(winner_global_id)
         if not kind == 'TrainerType':
-            raise Exception(not_trainer_err)
+            raise Exception(NOT_TRAINER_ERR)
 
         # o vencedor devem ser red ou blue
         if not winner_id == trainer_red_id and not winner_id == trainer_blue_id:
@@ -623,10 +623,32 @@ class CreateTrainerBattle(graphene.relay.ClientIDMutation):
         except Trainer.DoesNotExist:
             raise Exception('Sorry, the red trainer does not exist!')
 
-        try:
-            tournament = Tournament.objects.get(id=tournament_id)
-        except Tournament.DoesNotExist:
-            raise Exception('Sorry, the red trainer does not exist!')
+        if winner_id == trainer_red_id:
+
+            trainer_red.num_wins += 1
+            trainer_blue.num_losses += 1
+
+            trainer_red.num_battles += 1
+            trainer_blue.num_battles += 1
+
+            trainer_blue.save()
+            trainer_red.save()
+
+        elif winner_id == trainer_blue_id:
+
+            trainer_blue.num_wins += 1
+            trainer_red.num_losses += 1
+
+            trainer_red.num_battles += 1
+            trainer_blue.num_battles += 1
+
+            trainer_blue.save()
+            trainer_red.save()
+
+        # try:
+        #     tournament = Tournament.objects.get(id=tournament_id)
+        # except Tournament.DoesNotExist:
+        #     raise Exception('Sorry, the red trainer does not exist!')
 
         # pega o score do red
         try:
