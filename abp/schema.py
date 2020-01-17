@@ -1,6 +1,5 @@
 import graphene
-from abp.models import (Season, Tournament, League, Trainer, LeagueScore,
-                        TournamentScore, Leader, TrainerBattle, LeagueBattle)
+from abp.models import (Battle, League, Trainer, Score, Leader)
 from graphql_relay import from_global_id
 
 
@@ -9,6 +8,11 @@ from graphql_relay import from_global_id
 #                  Enums
 #######################################################
 class PokemonTypes(graphene.Enum):
+    """
+    Defines the pokemon type the leader uses.
+    The All type means the leader can use all pokémon types,
+    usually the champion uses all pokémon types.
+    """
     NORMAL = 'Normal'
     FIRE = 'Fire'
     WATER ='Water'
@@ -27,12 +31,13 @@ class PokemonTypes(graphene.Enum):
     DRAGON = 'Dragon'
     STEEL = 'Steel'
     FAIRY = 'Fairy'
+    ALL = 'All'
 
 
 class Role(graphene.Enum):
-    '''
+    """
     League Roles
-    '''
+    """
     GYM_LEADER = 'Gym Leader'
     ELITE_FOUR = 'Elite Four'
     CHAMPION = 'Champion'
@@ -41,63 +46,23 @@ class Role(graphene.Enum):
 #######################################################
 #                  GraphQL Types
 #######################################################
-class SeasonType(graphene.ObjectType):
-    class Meta:
-        interfaces = (graphene.relay.Node,)
-
-    reference = graphene.String()
-    start_date = graphene.Date()
-    end_date = graphene.Date()
-    description = graphene.String()
-
-    tournaments = graphene.relay.ConnectionField(
-        'abp.schema.TournamentConnection'
-    )
-
-    league = graphene.Field(
-        'abp.schema.LeagueType'
-    )
-
-    def resolve_tournaments(self, info, **kwargs):
-        return self.tournament_set.all()
-
-    def resolve_league(self, info, **kwargs):
-        return next(iter(self.league_set.all()))
-
-
-class TournamentType(graphene.ObjectType):
-    class Meta:
-        interfaces = (graphene.relay.Node,)
-
-    name = graphene.String()
-    start_date = graphene.Date()
-    end_date = graphene.Date()
-    description = graphene.String()
-    registered_trainers = graphene.ConnectionField(
-        'abp.schema.TrainerConnection'
-    )
-
-    def resolve_registered_trainers(self, info, **kwargs):
-        return [t.trainer_reference for t in self.tournamentscore_set.all()]
-
 
 class LeagueType(graphene.ObjectType):
-    class Meta:
-        interfaces = (graphene.relay.Node,)
-
-    # TODO: Think a way to inherit repeated fields from another generic class
+    """
+    Defines a graphQL serializer object for the League Model.
+    """
     reference = graphene.String()
     start_date = graphene.Date()
     end_date = graphene.Date()
     description = graphene.String()
-    
-    registered_trainers = graphene.relay.ConnectionField(
-        'abp.schema.TrainerConnection'
-    )
+    # Add leaders
+    # add elite four
+    # add champion
+    # add competitors
+    # Add winner
 
-    def resolve_registered_trainers(self, info, **kwargs):
-        return [t.trainer_reference for t in self.leaguescore_set.all()]
-
+    class Meta:
+        interfaces = (graphene.relay.Node,)
 
 class LeaderType(graphene.ObjectType):
     class Meta:
