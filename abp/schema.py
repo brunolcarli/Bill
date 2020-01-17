@@ -587,7 +587,7 @@ class CreateTrainerBattle(graphene.relay.ClientIDMutation):
         winner_global_id = _input.get('winner')
         tournament_global_id = _input.get('tournament')
 
-        NOT_TRAINER_ERR = 'The given a ID is not a Trainer ID.'
+        NOT_TRAINER_ERR = 'The given ID is not a Trainer ID.'
 
         kind, trainer_red_id = from_global_id(trainer_red_global_id)
         if not kind == 'TrainerType':
@@ -645,10 +645,10 @@ class CreateTrainerBattle(graphene.relay.ClientIDMutation):
             trainer_blue.save()
             trainer_red.save()
 
-        # try:
-        #     tournament = Tournament.objects.get(id=tournament_id)
-        # except Tournament.DoesNotExist:
-        #     raise Exception('Sorry, the red trainer does not exist!')
+        try:
+            _ = Tournament.objects.get(id=tournament_id)
+        except Tournament.DoesNotExist:
+            raise Exception('Sorry, this tournament does not exist!')
 
         # pega o score do red
         try:
