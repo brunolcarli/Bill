@@ -21,11 +21,30 @@ class League(models.Model):
     start_date = models.DateField(blank=True, null=True)
     end_date = models.DateField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
-    # Gym leaders
-    # elite four
-    # champio
-    # Competitors
-    # winner
+    gym_leaders = models.ManyToManyField(
+        'abp.Leader',
+        related_name='league_gym_leaders'
+    )
+    elite_four = models.ManyToManyField(
+        'abp.Leader',
+        related_name='league_elite_four'
+    )
+    competitors = models.ManyToManyField(
+        'abp.Trainer',
+        related_name='league_competitors'
+    )
+    champion = models.ForeignKey(
+        'abp.Leader',
+        on_delete=models.CASCADE,
+        related_name='league_champion',
+        null=True
+    )
+    winner = models.ForeignKey(
+        'abp.Trainer',
+        on_delete=models.CASCADE,
+        related_name='league_winner',
+        null=True
+    )
 
 
 class Trainer(models.Model):
