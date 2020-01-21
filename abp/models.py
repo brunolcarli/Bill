@@ -63,7 +63,7 @@ class Trainer(models.Model):
     badge_counter = models.IntegerField(default=0)
     leagues_counter = models.IntegerField(default=0)
     win_percentage = models.FloatField(default=0)
-    loose_battles = models.FloatField(default=0)
+    loose_percentage = models.FloatField(default=0)
 
     # TODO link to scores
 
