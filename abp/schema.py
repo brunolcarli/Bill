@@ -133,13 +133,38 @@ class ScoreType(graphene.ObjectType):
     trainer = graphene.Field(TrainerType)
     wins = graphene.Int()
     losses = graphene.Int()
-    # battles
+    battles = graphene.relay.ConnectionField('abp.schema.BattleConnection')
 
     def resolve_league(self, info, **kwargs):
         return self.league
 
     def resolve_trainer(self, info, **kwargs):
         return self.trainer
+
+    def resolve_battles(self, info, **kwargs):
+        return self.battles.all()
+
+    class Meta:
+        interfaces = (graphene.relay.Node,)
+
+
+class BattleType(graphene.ObjectType):
+    """
+    Defines a GraphQL serializer object for the battle models.
+    """
+    battle_datetime = graphene.DateTime()
+    winner_id = graphene.ID()
+    trainer = graphene.Field(TrainerType)
+    leader = graphene.Field(LeaderType)
+
+    def resolve_winner_id(self, info, **kwargs):
+        return self.winner_global_id
+
+    def resolve_trainer(self, info, **kwargs):
+        return self.trainer
+
+    def resolve_leader(self, info, **kwargs):
+        return self.leader
 
     class Meta:
         interfaces = (graphene.relay.Node,)
@@ -166,6 +191,11 @@ class LeaderConnection(graphene.relay.Connection):
 class ScoreConnection(graphene.relay.Connection):
     class Meta:
         node = ScoreType
+
+
+class BattleConnection(graphene.relay.Connection):
+    class Meta:
+        node = BattleType
 
 
 #######################################################
@@ -216,7 +246,11 @@ class Query(object):
     ###################################################
     #                       Battles
     ###################################################
-    # TODO
+    battles = graphene.relay.ConnectionField(
+        BattleConnection
+    )
+    def resolve_battles(self, info, **kwargs):
+        return Battle.objects.all()
 
 
 #######################################################
@@ -295,7 +329,7 @@ class CreateLeader(graphene.relay.ClientIDMutation):
         role = Role(required=True)
 
     def mutate_and_get_payload(self, info, **_input):
-        nickname = _input.get('nickname')
+        name = _input.get('name')
         pokemon_type = _input.get('pokemon_type')
         role = _input.get('role')
 
@@ -613,6 +647,84 @@ class LeagueRegistration(graphene.relay.ClientIDMutation):
         )
 
 
+class LeaderRegistration(graphene.relay.ClientIDMutation):
+    """
+    Register a leader in a league.
+    """
+    response = graphene.String()
+
+    class Input:
+        leader = graphene.ID(required=True)
+        league = graphene.ID(required=True)
+
+    def mutate_and_get_payload(self, info, **_input):
+        leader_global_id = _input.get('leader')
+        league_global_id = _input.get('league')
+
+        # verifica que o id de lider é realmente um id de lider
+        kind, leader_id = from_global_id(leader_global_id)
+        if not kind == 'LeaderType':
+            raise Exception('Wrong leader ID.')
+
+        try:
+            leader = Leader.objects.get(id=leader_id)
+        except Leader.DoesNotExist:
+            raise Exception('Sorry, this leader does not exist.')
+
+        # verifica que o id da liga é realmente um id de liga
+        kind, league_id = from_global_id(league_global_id)
+        if not kind == 'LeagueType':
+            raise Exception('Wrong league ID.')
+
+        try:
+            league = League.objects.get(id=league_id)
+        except League.DoesNotExist:
+            raise Exception('Sorry, this league does not exist.')
+
+        # verifica se o lider ja esta registrado nesta liga
+        if leader in league.gym_leaders.all() or \
+            leader in league.elite_four.all() or \
+            leader == league.champion:
+            raise Exception('This leader is already registered in this league!')
+
+        # verifica para qual função o líder foi designado
+        if leader.role == 'Gym Leader':
+            league.gym_leaders.add(leader)
+
+        elif leader.role == 'Elite Four':
+            if not len(league.elite_four.all()) < 4:
+                raise Exception('The league elite four is already fullfilled')
+            league.elite_four.add(leader)
+
+        elif leader.role == 'Champion':
+            if not league.champion:
+                league.champion = leader
+            else:
+                raise Exception(
+                    'This league champion has already been registered'
+                )
+
+        else:
+            raise Exception(
+                'This leader has no role yet. Please give him a role before' \
+                'registering at this league!'
+            )
+
+        league.save()
+        leader.save()
+
+        return LeaderRegistration(
+            f'The leader {leader.name} has been registered ' \
+            f'at league {league.reference}'
+        )
+
+
+# class BattleRegister(graphene.relay.ClientIDMutation):
+#     """
+#     Register a battle between a trainer and a leader.
+#     """
+#     pass
+
 #######################################################
 #                  Main Mutation
 #######################################################
@@ -634,3 +746,4 @@ class Mutation:
 
     # Other
     league_registration = LeagueRegistration.Field()
+    leader_registration = LeaderRegistration.Field()
