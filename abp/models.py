@@ -103,7 +103,7 @@ class Score(models.Model):
         null=True
     )
     battles = models.ManyToManyField('abp.Battle')
-    # TODO add badges
+    badges = models.ManyToManyField('abp.Badge')
 
 
 class Battle(models.Model):
