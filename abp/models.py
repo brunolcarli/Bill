@@ -103,6 +103,7 @@ class Score(models.Model):
         null=True
     )
     battles = models.ManyToManyField('abp.Battle')
+    # TODO add badges
 
 
 class Battle(models.Model):
@@ -112,5 +113,15 @@ class Battle(models.Model):
     """
     battle_datetime = models.DateTimeField(auto_now_add=True)
     winner_global_id = models.CharField(max_length=100)
-    # traineer
-    # leader
+    trainer = models.ForeignKey(
+        Trainer,
+        on_delete=models.CASCADE,
+        null=True,
+        related_name='battling_trainer'
+    )
+    leader = models.ForeignKey(
+        Leader,
+        on_delete=models.CASCADE,
+        null=True,
+        related_name='battling_leader'
+    )
