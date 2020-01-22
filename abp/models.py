@@ -58,14 +58,11 @@ class Trainer(models.Model):
         unique=True
     )
     join_date = models.DateTimeField(auto_now_add=True)
-
     battle_counter = models.IntegerField(default=0)
     badge_counter = models.IntegerField(default=0)
     leagues_counter = models.IntegerField(default=0)
     win_percentage = models.FloatField(default=0)
     loose_percentage = models.FloatField(default=0)
-
-    # TODO link to scores
 
 
 class Leader(Trainer):
@@ -95,9 +92,17 @@ class Score(models.Model):
     """
     wins = models.IntegerField(default=0)
     losses = models.IntegerField(default=0)
-    # trainer
-    # battles
-    # league
+    league = models.ForeignKey(
+        League,
+        on_delete=models.CASCADE,
+        null=True
+    )
+    trainer = models.ForeignKey(
+        Trainer,
+        on_delete=models.CASCADE,
+        null=True
+    )
+    battles = models.ManyToManyField('abp.Battle')
 
 
 class Battle(models.Model):
