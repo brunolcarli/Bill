@@ -125,3 +125,11 @@ class Battle(models.Model):
         null=True,
         related_name='battling_leader'
     )
+
+
+class Badge(models.Model):
+    """
+    Defines a badge representing the victory of a trainer over a
+    Gym Leader.
+    """
+    reference = models.CharField(max_length=100)
