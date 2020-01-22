@@ -92,7 +92,10 @@ class LeaderType(graphene.ObjectType):
     battle_counter = graphene.Int()
     win_percentage = graphene.Float()
     loose_percentage = graphene.Float()
-    # scores
+    scores = graphene.relay.ConnectionField('abp.schema.ScoreConnection')
+
+    def resolve_scores(self, info, **kwargs):
+        return [score for score in self.score_set.all()]
 
     class Meta:
         interfaces = (graphene.relay.Node,)
@@ -110,10 +113,33 @@ class TrainerType(graphene.ObjectType):
     win_percentage = graphene.Float()
     loose_percentage = graphene.Float()
     leagues = graphene.relay.ConnectionField('abp.schema.LeagueConnection')
-    # TODO link to scores
+    scores = graphene.relay.ConnectionField('abp.schema.ScoreConnection')
+
+    def resolve_scores(self, info, **kwargs):
+        return [score for score in self.score_set.all()]
 
     def resolve_leagues(self, info, **kwargs):
         return [league for league in self.league_competitors.all()]
+
+    class Meta:
+        interfaces = (graphene.relay.Node,)
+
+
+class ScoreType(graphene.ObjectType):
+    """
+    Defines a GraphQL serializer object for the score model
+    """
+    league = graphene.Field(LeagueType)
+    trainer = graphene.Field(TrainerType)
+    wins = graphene.Int()
+    losses = graphene.Int()
+    # battles
+
+    def resolve_league(self, info, **kwargs):
+        return self.league
+
+    def resolve_trainer(self, info, **kwargs):
+        return self.trainer
 
     class Meta:
         interfaces = (graphene.relay.Node,)
@@ -136,6 +162,10 @@ class LeaderConnection(graphene.relay.Connection):
     class Meta:
         node = LeaderType
 
+
+class ScoreConnection(graphene.relay.Connection):
+    class Meta:
+        node = ScoreType
 
 
 #######################################################
@@ -177,7 +207,11 @@ class Query(object):
     ###################################################
     #                       Scores
     ###################################################
-    # TODO
+    scores = graphene.relay.ConnectionField(
+        ScoreConnection
+    )
+    def resolve_scores(self, info, **kwargs):
+        return Score.objects.all()
 
     ###################################################
     #                       Battles
@@ -567,7 +601,12 @@ class LeagueRegistration(graphene.relay.ClientIDMutation):
         trainer.leagues_counter += 1
         trainer.save()
 
-        # TODO criar um score linkando este trainer com esta liga
+        # Cria um score do treinador para esta liga
+        score = Score.objects.create(
+            trainer=trainer,
+            league=league
+        )
+        score.save()
 
         return LeagueRegistration(
             f'{trainer.name} registration at {league.reference} complete!'
