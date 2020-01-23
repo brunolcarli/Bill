@@ -64,7 +64,7 @@ class Trainer(models.Model):
     win_percentage = models.FloatField(default=0)
     loose_percentage = models.FloatField(default=0)
     total_wins = models.IntegerField(default=0)
-    total_loses = models.IntegerField(default=0)
+    total_losses = models.IntegerField(default=0)
 
 
 class Leader(Trainer):
@@ -114,7 +114,7 @@ class Battle(models.Model):
     The battles can be seen by an scoreboard.
     """
     battle_datetime = models.DateTimeField(auto_now_add=True)
-    winner_global_id = models.CharField(max_length=100)
+    winner_name = models.CharField(max_length=100)
     trainer = models.ForeignKey(
         Trainer,
         on_delete=models.CASCADE,
