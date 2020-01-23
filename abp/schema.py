@@ -1,5 +1,5 @@
 import graphene
-from abp.models import (Battle, League, Trainer, Score, Leader)
+from abp.models import (Battle, League, Trainer, Score, Leader, Badge)
 from graphql_relay import from_global_id
 
 
@@ -134,6 +134,7 @@ class ScoreType(graphene.ObjectType):
     wins = graphene.Int()
     losses = graphene.Int()
     battles = graphene.relay.ConnectionField('abp.schema.BattleConnection')
+    badges = graphene.List(graphene.String)
 
     def resolve_league(self, info, **kwargs):
         return self.league
@@ -144,6 +145,9 @@ class ScoreType(graphene.ObjectType):
     def resolve_battles(self, info, **kwargs):
         return self.battles.all()
 
+    def resolve_badges(self, info, **kwargs):
+        return self.badges.all()
+
     class Meta:
         interfaces = (graphene.relay.Node,)
 
@@ -153,12 +157,12 @@ class BattleType(graphene.ObjectType):
     Defines a GraphQL serializer object for the battle models.
     """
     battle_datetime = graphene.DateTime()
-    winner_id = graphene.ID()
+    winner = graphene.String()
     trainer = graphene.Field(TrainerType)
     leader = graphene.Field(LeaderType)
 
-    def resolve_winner_id(self, info, **kwargs):
-        return self.winner_global_id
+    def resolve_winner(self, info, **kwargs):
+        return self.winner_name
 
     def resolve_trainer(self, info, **kwargs):
         return self.trainer
@@ -252,6 +256,12 @@ class Query(object):
     def resolve_battles(self, info, **kwargs):
         return Battle.objects.all()
 
+    ###################################################
+    #                       Badges
+    ###################################################
+    badges = graphene.String()
+    def resolve_badges(self, info, **kwargs):
+        return Badge.objects.all()
 
 #######################################################
 #                  Create Mutations
@@ -719,11 +729,78 @@ class LeaderRegistration(graphene.relay.ClientIDMutation):
         )
 
 
-# class BattleRegister(graphene.relay.ClientIDMutation):
-#     """
-#     Register a battle between a trainer and a leader.
-#     """
-#     pass
+class BattleRegister(graphene.relay.ClientIDMutation):
+    """
+    Register a battle between a trainer and a leader.
+    """
+    battle = graphene.Field(BattleType)
+
+    class Input:
+        league = graphene.ID(required=True)
+        trainer_name = graphene.String(required=True)
+        leader_name = graphene.ID(required=True)
+        winner_name = graphene.String(required=True)
+
+    def mutate_and_get_payload(self, info, **_input):
+        league = _input.get('league')
+        trainer_name = _input.get('trainer_name')
+        leader_name = _input.get('leader_name')
+        winner = _input.get('winner_name')
+
+        # Tenta recupera o treiandor
+        try:
+            trainer = Trainer.objects.get(name=trainer_name)
+        except Trainer.DoesNotExist:
+            raise Exception(
+                f'Trainer {trainer_name} not found on database!'
+            )
+
+        # Tenta recupera o líder
+        try:
+            leader = Leader.objects.get(name=leader_name)
+        except Leader.DoesNotExist:
+            raise Exception(
+                f'Trainer {leader_name} not found on database!'
+            )
+
+        # Recupera o score do treinador
+        try:
+            trainer_score = trainer.score_set.get(league=league)
+        except Score.DoesNotExist:
+            raise Exception(
+                'This trainer doesnt seems to be registered ' \
+                'on the given league!'
+            )
+
+        # Verifica que o vencedor é um dos dois fornecidos
+        if not winner == trainer.name and not winner == leader.name:
+            raise Exception('The winner must be the given leader or trainer.')
+
+        # Se o vencedor for o treinador
+        if winner == trainer.name:
+            # Registra a batalha
+            battle = Battle.objects.create(
+                leader=leader,
+                trainer=trainer,
+                winner=winner
+            )
+            battle.save()
+
+            # Atualiza os stats dos lutadores e do score
+            trainer.battle_counter += 1
+            trainer.total_wins += 1
+            trainer_score.wins += 1
+            trainer.win_percentage = (trainer.total_wins / trainer.battle_counter) * 100
+            trainer.loose_percentage = (trainer.total_losses / trainer.battle_counter) * 100
+            trainer_score.wins += 1
+
+            leader.battle_counter += 1
+            leader.total_losses += 1
+            leader.win_percentage = (leader.total_wins / leader.battle_counter) * 100
+            leader_loose_percentage = (leader.total_losses / leader.battle_counter) * 100
+
+        else:
+            pass
 
 #######################################################
 #                  Main Mutation
