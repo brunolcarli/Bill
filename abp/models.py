@@ -63,6 +63,8 @@ class Trainer(models.Model):
     leagues_counter = models.IntegerField(default=0)
     win_percentage = models.FloatField(default=0)
     loose_percentage = models.FloatField(default=0)
+    total_wins = models.IntegerField(default=0)
+    total_loses = models.IntegerField(default=0)
 
 
 class Leader(Trainer):
