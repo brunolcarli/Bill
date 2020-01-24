@@ -146,7 +146,7 @@ class ScoreType(graphene.ObjectType):
         return self.battles.all()
 
     def resolve_badges(self, info, **kwargs):
-        return self.badges.all()
+        return [badge.reference for badge in self.badges.all()]
 
     class Meta:
         interfaces = (graphene.relay.Node,)
@@ -738,14 +738,24 @@ class BattleRegister(graphene.relay.ClientIDMutation):
     class Input:
         league = graphene.ID(required=True)
         trainer_name = graphene.String(required=True)
-        leader_name = graphene.ID(required=True)
+        leader_name = graphene.String(required=True)
         winner_name = graphene.String(required=True)
 
     def mutate_and_get_payload(self, info, **_input):
-        league = _input.get('league')
+        league_global_id = _input.get('league')
         trainer_name = _input.get('trainer_name')
         leader_name = _input.get('leader_name')
         winner = _input.get('winner_name')
+
+        # Verifica a liga fornecida
+        kind, league_id = from_global_id(league_global_id)
+        if not kind == 'LeagueType':
+            raise Exception('Wrong league ID.')
+
+        try:
+            league = League.objects.get(id=league_id)
+        except League.DoesNotExist:
+            raise Exception('Sorry, this league does not exist.')
 
         # Tenta recupera o treiandor
         try:
@@ -776,31 +786,106 @@ class BattleRegister(graphene.relay.ClientIDMutation):
         if not winner == trainer.name and not winner == leader.name:
             raise Exception('The winner must be the given leader or trainer.')
 
+        # Registra a batalha
+        battle = Battle.objects.create(
+            leader=leader,
+            trainer=trainer,
+            winner_name=winner
+        )
+        battle.save()
+
+        # incrementa o contrador de batalhas dos lutadores
+        trainer.battle_counter += 1
+        leader.battle_counter += 1
+
         # Se o vencedor for o treinador
         if winner == trainer.name:
-            # Registra a batalha
-            battle = Battle.objects.create(
-                leader=leader,
-                trainer=trainer,
-                winner=winner
-            )
-            battle.save()
-
             # Atualiza os stats dos lutadores e do score
-            trainer.battle_counter += 1
             trainer.total_wins += 1
             trainer_score.wins += 1
-            trainer.win_percentage = (trainer.total_wins / trainer.battle_counter) * 100
-            trainer.loose_percentage = (trainer.total_losses / trainer.battle_counter) * 100
-            trainer_score.wins += 1
-
-            leader.battle_counter += 1
             leader.total_losses += 1
-            leader.win_percentage = (leader.total_wins / leader.battle_counter) * 100
-            leader_loose_percentage = (leader.total_losses / leader.battle_counter) * 100
 
+        # Se o vencedor for o lider
         else:
-            pass
+            # Atualiza os stats dos lutadores e do score
+            trainer.total_losses += 1
+            trainer_score.losses += 1
+            leader.total_wins += 1
+
+        # Atualiza a porcentagem de vitorias/derrotas dos lutadores
+        trainer.win_percentage = (trainer.total_wins / trainer.battle_counter) * 100
+        trainer.loose_percentage = (trainer.total_losses / trainer.battle_counter) * 100
+        leader.win_percentage = (leader.total_wins / leader.battle_counter) * 100
+        leader.loose_percentage = (leader.total_losses / leader.battle_counter) * 100
+
+        trainer.save()
+        leader.save()
+        trainer_score.save()
+
+        return BattleRegister(battle)
+
+
+class AddBadgeToTrainer(graphene.relay.ClientIDMutation):
+    """
+    Gives a badge do a trainer.
+    """
+    response = graphene.String()
+
+    class Input:
+        trainer_name = graphene.String(required=True)
+        badge = graphene.String(required=True)
+        league = graphene.ID(required=True)
+
+    def mutate_and_get_payload(self, info, **_input):
+        trainer_name = _input.get('trainer_name')
+        badge_reference = _input.get('badge').title()
+        league_global_id = _input.get('league')
+
+        # Verifica a liga fornecida
+        kind, league_id = from_global_id(league_global_id)
+        if not kind == 'LeagueType':
+            raise Exception('Wrong league ID.')
+        try:
+            league = League.objects.get(id=league_id)
+        except League.DoesNotExist:
+            raise Exception('Sorry, this league does not exist.')
+
+        # Tenta recuperar a insígnia do banco de dados
+        try:
+            badge = Badge.objects.get(reference=badge_reference)
+        except Badge.DoesNotExist:
+            raise Exception('This Badge does not exist!')
+
+        # Tenta recuperar o treinador
+        try:
+            trainer = Trainer.objects.get(name=trainer_name)
+        except Trainer.DoesNotExist:
+            raise Exception(f'The trainer {trainer_name} does not exist')
+
+        # Recupera o score do treinador
+        try:
+            trainer_score = trainer.score_set.get(league=league)
+        except Score.DoesNotExist:
+            raise Exception(
+                'This trainer doesnt seems to be registered ' \
+                'on the given league!'
+            )
+
+        # verifica que o treinaro ainda não possui esta insígina
+        if badge in trainer_score.badges.all():
+            raise Exception('This trainer already have this badge!')
+
+        # Adiciona a insígnia ao treinador
+        trainer_score.badges.add(badge)
+        trainer.badge_counter += 1
+
+        trainer_score.save()
+        trainer.save()
+
+        return AddBadgeToTrainer(
+            f'{trainer_name} received {badge_reference} badge!'
+        )
+
 
 #######################################################
 #                  Main Mutation
@@ -824,3 +909,5 @@ class Mutation:
     # Other
     league_registration = LeagueRegistration.Field()
     leader_registration = LeaderRegistration.Field()
+    battle_register = BattleRegister.Field()
+    add_badge_to_trainer = AddBadgeToTrainer.Field()
