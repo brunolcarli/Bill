@@ -4,7 +4,7 @@
 
 # Bill API
 
->![Generic badge](https://img.shields.io/badge/version-0.0.0-silver.svg)
+>![Generic badge](https://img.shields.io/badge/version-0.0.1-silver.svg)
 [![Generic badge](https://img.shields.io/badge/docs-blue.svg)](https://github.com/brunolcarli/Bill/wiki)
 
 ABP Backend
