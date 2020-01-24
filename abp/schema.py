@@ -1,6 +1,5 @@
 import graphene
-from abp.models import (Season, Tournament, League, Trainer, LeagueScore,
-                        TournamentScore, Leader, TrainerBattle, LeagueBattle)
+from abp.models import (Battle, League, Trainer, Score, Leader, Badge)
 from graphql_relay import from_global_id
 
 
@@ -9,6 +8,11 @@ from graphql_relay import from_global_id
 #                  Enums
 #######################################################
 class PokemonTypes(graphene.Enum):
+    """
+    Defines the pokemon type the leader uses.
+    The All type means the leader can use all pokémon types,
+    usually the champion uses all pokémon types.
+    """
     NORMAL = 'Normal'
     FIRE = 'Fire'
     WATER ='Water'
@@ -27,12 +31,13 @@ class PokemonTypes(graphene.Enum):
     DRAGON = 'Dragon'
     STEEL = 'Steel'
     FAIRY = 'Fairy'
+    ALL = 'All'
 
 
 class Role(graphene.Enum):
-    '''
+    """
     League Roles
-    '''
+    """
     GYM_LEADER = 'Gym Leader'
     ELITE_FOUR = 'Elite Four'
     CHAMPION = 'Champion'
@@ -41,204 +46,137 @@ class Role(graphene.Enum):
 #######################################################
 #                  GraphQL Types
 #######################################################
-class SeasonType(graphene.ObjectType):
-    class Meta:
-        interfaces = (graphene.relay.Node,)
-
-    reference = graphene.String()
-    start_date = graphene.Date()
-    end_date = graphene.Date()
-    description = graphene.String()
-
-    tournaments = graphene.relay.ConnectionField(
-        'abp.schema.TournamentConnection'
-    )
-
-    league = graphene.Field(
-        'abp.schema.LeagueType'
-    )
-
-    def resolve_tournaments(self, info, **kwargs):
-        return self.tournament_set.all()
-
-    def resolve_league(self, info, **kwargs):
-        return next(iter(self.league_set.all()))
-
-
-class TournamentType(graphene.ObjectType):
-    class Meta:
-        interfaces = (graphene.relay.Node,)
-
-    name = graphene.String()
-    start_date = graphene.Date()
-    end_date = graphene.Date()
-    description = graphene.String()
-    registered_trainers = graphene.ConnectionField(
-        'abp.schema.TrainerConnection'
-    )
-
-    def resolve_registered_trainers(self, info, **kwargs):
-        return [t.trainer_reference for t in self.tournamentscore_set.all()]
-
 
 class LeagueType(graphene.ObjectType):
-    class Meta:
-        interfaces = (graphene.relay.Node,)
-
-    # TODO: Think a way to inherit repeated fields from another generic class
+    """
+    Defines a graphQL serializer object for the League Model.
+    """
     reference = graphene.String()
     start_date = graphene.Date()
     end_date = graphene.Date()
     description = graphene.String()
-    
-    registered_trainers = graphene.relay.ConnectionField(
-        'abp.schema.TrainerConnection'
-    )
+    gym_leaders = graphene.relay.ConnectionField('abp.schema.LeaderConnection')
+    elite_four = graphene.relay.ConnectionField('abp.schema.LeaderConnection')
+    champion = graphene.Field('abp.schema.LeaderType')
+    competitors = graphene.relay.ConnectionField('abp.schema.TrainerConnection')
+    winner = graphene.Field('abp.schema.TrainerType')
 
-    def resolve_registered_trainers(self, info, **kwargs):
-        return [t.trainer_reference for t in self.leaguescore_set.all()]
+    def resolve_gym_leaders(self, info, **kwargs):
+        return [leader for leader in self.gym_leaders.all()]
+
+    def resolve_elite_four(self, info, **kwargs):
+        return [elite for elite in self.elite_four.all()]
+
+    def resolve_champion(self, info, **kwargs):
+        return self.champion
+
+    def resolve_competitors(self, info, **kwargs):
+        return [trainer for trainer in self.competitors.all()]
+
+    def resolve_winner(self, info, **kwargs):
+        return self.winner
+
+    class Meta:
+        interfaces = (graphene.relay.Node,)
 
 
 class LeaderType(graphene.ObjectType):
-    class Meta:
-        interfaces = (graphene.relay.Node,)
-
-    nickname = graphene.String()
+    """
+    Defines a GraphQL  serializer object for the Leader Model.
+    """
+    name = graphene.String()
     role = Role()
     pokemon_type = PokemonTypes()
-    league_reference = graphene.Field(LeagueType)
-    global_score = graphene.Field('abp.schema.TrainerGlobalStatus')
+    clauses = graphene.String()
+    join_date = graphene.DateTime()
+    battle_counter = graphene.Int()
+    win_percentage = graphene.Float()
+    loose_percentage = graphene.Float()
+    scores = graphene.relay.ConnectionField('abp.schema.ScoreConnection')
 
-    def resolve_league_reference(self, info, **kwargs):
-        return self.league_season
+    def resolve_scores(self, info, **kwargs):
+        return [score for score in self.score_set.all()]
 
-    def resolve_global_score(self, info, **kwargs):
-        status = TrainerGlobalStatus(
-            num_wins=self.num_wins,
-            num_losses=self.num_losses,
-            num_battles=self.num_battles
-        )
-        return status
-
-
-class LeagueScoreType(graphene.ObjectType):
     class Meta:
         interfaces = (graphene.relay.Node,)
 
-    reference = graphene.String()
-    league = graphene.Field(
-        'abp.schema.LeagueType'
-    )
-    trainer = graphene.Field(
-        'abp.schema.TrainerType'
-    )
+
+class TrainerType(graphene.ObjectType):
+    """
+    Defines a GraphQL serializer object for the Trainer Model
+    """
+    name = graphene.String()
+    join_date = graphene.DateTime()
+    battle_counter = graphene.Int()
+    badge_counter = graphene.Int()
+    leagues_counter = graphene.Int()
+    win_percentage = graphene.Float()
+    loose_percentage = graphene.Float()
+    leagues = graphene.relay.ConnectionField('abp.schema.LeagueConnection')
+    scores = graphene.relay.ConnectionField('abp.schema.ScoreConnection')
+
+    def resolve_scores(self, info, **kwargs):
+        return [score for score in self.score_set.all()]
+
+    def resolve_leagues(self, info, **kwargs):
+        return [league for league in self.league_competitors.all()]
+
+    class Meta:
+        interfaces = (graphene.relay.Node,)
+
+
+class ScoreType(graphene.ObjectType):
+    """
+    Defines a GraphQL serializer object for the score model
+    """
+    league = graphene.Field(LeagueType)
+    trainer = graphene.Field(TrainerType)
+    wins = graphene.Int()
+    losses = graphene.Int()
+    battles = graphene.relay.ConnectionField('abp.schema.BattleConnection')
+    badges = graphene.List(graphene.String)
 
     def resolve_league(self, info, **kwargs):
-        return self.league_reference
+        return self.league
 
     def resolve_trainer(self, info, **kwargs):
-        return self.trainer_reference
-
-
-class TournamentScoreType(graphene.ObjectType):
-    class Meta:
-        interfaces = (graphene.relay.Node,)
-
-    reference = graphene.String()
-    tournament = graphene.Field(
-        'abp.schema.TournamentType'
-    )
-    trainer = graphene.Field(
-        'abp.schema.TrainerType'
-    )
-    battles = graphene.relay.ConnectionField(
-        'abp.schema.TrainerBattleConnection'
-    )
-
-    def resolve_tournament(self, info, **kwargs):
-        return self.tournament_reference
-
-    def resolve_trainer(self, info, **kwargs):
-        return self.trainer_reference
+        return self.trainer
 
     def resolve_battles(self, info, **kwargs):
         return self.battles.all()
 
+    def resolve_badges(self, info, **kwargs):
+        return [badge.reference for badge in self.badges.all()]
 
-class TrainerGlobalStatus(graphene.ObjectType):
-    num_wins = graphene.Int()
-    num_losses = graphene.Int()
-    num_battles = graphene.Int()
-
-
-class TrainerType(graphene.ObjectType):
     class Meta:
         interfaces = (graphene.relay.Node,)
 
-    nickname = graphene.String()
-    registration_datetime = graphene.DateTime()
-    tournament_scores = graphene.relay.ConnectionField(
-        'abp.schema.TournamentScoreConnection'
-    )
-    league_scores = graphene.relay.ConnectionField(
-        'abp.schema.LeagueScoreConnection'
-    )
-    global_status = graphene.Field(
-        TrainerGlobalStatus
-    )
 
-    def resolve_registration_datetime(self, info, **kwargs):
-        return self.registration_date
-
-    def resolve_tournament_scores(self, info, **kwargs):
-        return self.tournamentscore_set.all()
-
-    def resolve_league_scores(self, info, **kwargs):
-        return self.leaguescore_set.all()
-
-    def resolve_global_status(self, info, **kwargs):
-        status = TrainerGlobalStatus(
-            num_wins=self.num_wins,
-            num_losses=self.num_losses,
-            num_battles=self.num_battles
-        )
-        return status
-
-    # TODO link to battles
-
-
-class TrainerBattleType(graphene.ObjectType):
-    class Meta:
-        interfaces = (graphene.relay.Node,)
-
-    trainer_red = graphene.Field('abp.schema.TrainerType')
-    trainer_blue = graphene.Field('abp.schema.TrainerType')
-    winner = graphene.Field('abp.schema.TrainerType')
+class BattleType(graphene.ObjectType):
+    """
+    Defines a GraphQL serializer object for the battle models.
+    """
     battle_datetime = graphene.DateTime()
-
-    def resolve_trainer_red(self, info, **kwargs):
-        return Trainer.objects.get(id=self.trainer_red_id)
-
-    def resolve_trainer_blue(self, info, **kwargs):
-        return Trainer.objects.get(id=self.trainer_blue_id)
+    winner = graphene.String()
+    trainer = graphene.Field(TrainerType)
+    leader = graphene.Field(LeaderType)
 
     def resolve_winner(self, info, **kwargs):
-        return Trainer.objects.get(id=self.winner_id)
+        return self.winner_name
+
+    def resolve_trainer(self, info, **kwargs):
+        return self.trainer
+
+    def resolve_leader(self, info, **kwargs):
+        return self.leader
+
+    class Meta:
+        interfaces = (graphene.relay.Node,)
 
 
 #######################################################
 #                  Relay Connections
 #######################################################
-class SeasonlConnection(graphene.relay.Connection):
-    class Meta:
-        node = SeasonType
-
-
-class TournamentConnection(graphene.relay.Connection):
-    class Meta:
-        node = TournamentType
-
-
 class LeagueConnection(graphene.relay.Connection):
     class Meta:
         node = LeagueType
@@ -249,52 +187,29 @@ class TrainerConnection(graphene.relay.Connection):
         node = TrainerType
 
 
-class TournamentScoreConnection(graphene.relay.Connection):
-    class Meta:
-        node = TournamentScoreType
-
-
-class LeagueScoreConnection(graphene.relay.Connection):
-    class Meta:
-        node = LeagueScoreType
-
-
 class LeaderConnection(graphene.relay.Connection):
     class Meta:
         node = LeaderType
 
 
-class TrainerBattleConnection(graphene.relay.Connection):
+class ScoreConnection(graphene.relay.Connection):
     class Meta:
-        node = TrainerBattleType
+        node = ScoreType
+
+
+class BattleConnection(graphene.relay.Connection):
+    class Meta:
+        node = BattleType
 
 
 #######################################################
 #                  GraphQL Query
 #######################################################
 class Query(object):
-    '''
-        ABP Queries
-    '''
+    """
+    ABP Queries
+    """
     node = graphene.relay.Node.Field()
-
-    ###################################################
-    #                       Seasons
-    ###################################################
-    seasons = graphene.relay.ConnectionField(
-        SeasonlConnection
-    )
-    def resolve_seasons(self, info, **kwargs):
-        return Season.objects.all()
-
-    ###################################################
-    #                       Tournaments
-    ###################################################
-    tournaments = graphene.relay.ConnectionField(
-        TournamentConnection
-    )
-    def resolve_tournaments(self, info, **kwargs):
-        return Tournament.objects.all()
 
     ###################################################
     #                       Leagues
@@ -326,172 +241,50 @@ class Query(object):
     ###################################################
     #                       Scores
     ###################################################
-    tournament_scores = graphene.relay.ConnectionField(
-        TournamentScoreConnection
+    scores = graphene.relay.ConnectionField(
+        ScoreConnection
     )
-    def resolve_tournament_scores(self, info, **kwargs):
-        return TournamentScore.objects.all()
-
-    league_scores = graphene.ConnectionField(
-        LeagueScoreConnection
-    )
-    def resolve_league_scores(self, info, **kwargs):
-        return LeagueScore.objects.all()
+    def resolve_scores(self, info, **kwargs):
+        return Score.objects.all()
 
     ###################################################
     #                       Battles
     ###################################################
-    trainer_battles = graphene.relay.ConnectionField(
-        TrainerBattleConnection
+    battles = graphene.relay.ConnectionField(
+        BattleConnection
     )
-    def resolve_trainer_battles(self, info, **kwargs):
-        return TrainerBattle.objects.all()
+    def resolve_battles(self, info, **kwargs):
+        return Battle.objects.all()
 
-    # league_battles = graphene.ConnectionField(
-    #     LeagueBattleConnection
-    # )
-    # def resolve_league_battles(self, info, **kwargs):
-    #     return LeagueBattle.objects.all()
-
+    ###################################################
+    #                       Badges
+    ###################################################
+    badges = graphene.String()
+    def resolve_badges(self, info, **kwargs):
+        return Badge.objects.all()
 
 #######################################################
 #                  Create Mutations
 #######################################################
-class CreateSeason(graphene.relay.ClientIDMutation):
-    '''
-        Creates a season.
-    '''
-    season = graphene.Field(
-        SeasonType
-    )
-
-    class Input:
-        reference = graphene.String(
-            required=True
-        )
-        start_date = graphene.Date(
-            required=True
-        )
-        end_date = graphene.Date(
-            required=True
-        )
-        description = graphene.String()
-
-    def mutate_and_get_payload(self, info, **_input):
-        reference = _input.get('reference')
-        start_date = _input.get('start_date')
-        end_date = _input.get('end_date')
-        description = _input.get('description', '')
-
-        try:
-            season = Season.objects.create(
-                reference=reference,
-                start_date=start_date,
-                end_date=end_date,
-                description=description
-            )
-        # TODO handle the right error when the time come
-        except Exception as ex:
-            raise ex
-    
-        return CreateSeason(season)
-
-
-class CreateTournament(graphene.relay.ClientIDMutation):
-    '''
-        Creates a tournament
-    '''
-    tournament = graphene.Field(
-        TournamentType
-    )
-
-    class Input:
-        name = graphene.String(
-            required=True
-        )
-        start_date = graphene.Date()
-        end_date = graphene.Date()
-        description = graphene.String()
-        season_id = graphene.ID(
-            required=True
-        )
-
-    def mutate_and_get_payload(self, info, **_input):
-        name = _input.get('name')
-        start_date = _input.get('start_date')
-        end_date = _input.get('end_date')
-        description = _input.get('description', '')
-        season_global_id = _input.get('season_id')
-
-        kind, season_id = from_global_id(season_global_id)
-
-        # Verifica que o id é de uma Season
-        if not kind == 'SeasonType':
-            raise Exception(
-                'The ID doesnt match with a Season object!'
-            )
-
-        try:
-            tournament_season = Season.objects.get(id=season_id)
-        except Season.DoesNotExist:
-            raise Exception(
-                'Sorry, the given Season does not exist!'
-            )
-
-        try:
-            tournament = Tournament.objects.create(
-                name=name,
-                start_date=start_date,
-                end_date=end_date,
-                description=description,
-                tournament_season=tournament_season
-            )
-        except Exception as ex:
-            raise Exception(ex)
-
-        else:
-            tournament.save()
-            return CreateTournament(tournament)
-
-
 class CreateLeague(graphene.relay.ClientIDMutation):
-    '''
-        Creates a league.
-    '''
+    """
+    Creates a league.
+    """
     league = graphene.Field(
         LeagueType
     )
 
     class Input:
         reference = graphene.String(required=True)
-        start_date = graphene.Date()
-        end_date = graphene.Date()
-        description = graphene.String()
-        season_id = graphene.ID(
-            required=True
-        )
+        start_date = graphene.Date(required=False)
+        end_date = graphene.Date(required=False)
+        description = graphene.String(required=False)
 
     def mutate_and_get_payload(self, info, **_input):
         reference = _input.get('reference')
         start_date = _input.get('start_date')
         end_date = _input.get('end_date')
         description = _input.get('description', '')
-        season_global_id = _input.get('season_id')
-
-        kind, season_id = from_global_id(season_global_id)
-
-        # Verifica que o id é de uma Season
-        if not kind == 'SeasonType':
-            raise Exception(
-                'The ID doesnt match with a Season object!'
-            )
-
-        try:
-            league_season = Season.objects.get(id=season_id)
-        except Season.DoesNotExist:
-            raise Exception(
-                'Sorry, the given Season does not exist!'
-            )
 
         try:
             league = League.objects.create(
@@ -499,226 +292,131 @@ class CreateLeague(graphene.relay.ClientIDMutation):
                 start_date=start_date,
                 end_date=end_date,
                 description=description,
-                league_season=league_season
             )
         except Exception as ex:
             raise Exception(ex)
 
-        else:
-            league.save()
-            return CreateLeague(league)
+        league.save()
+        return CreateLeague(league)
 
 
 class CreateTrainer(graphene.relay.ClientIDMutation):
-    '''
-        Creates a trainer.
-    '''
+    """
+    Creates a trainer.
+    """
     trainer = graphene.Field(
         TrainerType
     )
 
     class Input:
-        nickname = graphene.String(required=True)
+        name = graphene.String(required=True)
 
     def mutate_and_get_payload(self, info, **_input):
-        nickname = _input.get('nickname')
+        name = _input.get('name')
 
         try:
             trainer = Trainer.objects.create(
-                nickname=nickname
+                name=name
             )
         except Exception as ex:
             raise Exception(ex)
 
-        else:
-            trainer.save()
-            return CreateTrainer(trainer)
+        trainer.save()
+        return CreateTrainer(trainer)
 
 
 class CreateLeader(graphene.relay.ClientIDMutation):
-    '''
-        Creates a leader.
-    '''
+    """
+    Creates a leader.
+    """
     leader = graphene.Field(
         LeaderType
     )
 
     class Input:
-        nickname = graphene.String(required=True)
-        pokemon_type = PokemonTypes()
+        name = graphene.String(required=True)
+        pokemon_type = PokemonTypes(required=True)
         role = Role(required=True)
 
     def mutate_and_get_payload(self, info, **_input):
-        nickname = _input.get('nickname')
+        name = _input.get('name')
         pokemon_type = _input.get('pokemon_type')
         role = _input.get('role')
 
         try:
             leader = Leader.objects.create(
-                nickname=nickname,
+                name=name,
                 pokemon_type=pokemon_type,
                 role=role
             )
         except Exception as ex:
             raise Exception(ex)
 
-        else:
-            leader.save()
-            return CreateLeader(leader)
-
-
-class CreateTrainerBattle(graphene.relay.ClientIDMutation):
-    '''
-        Creates a battle between two trainers.
-    '''
-    battle = graphene.Field(
-        TrainerBattleType
-    )
-
-    class Input:
-        trainer_red = graphene.ID(required=True)
-        trainer_blue = graphene.ID(required=True)
-        winner = graphene.ID(required=True)
-        tournament = graphene.ID(required=True)
-
-    def mutate_and_get_payload(self, info, **_input):
-        trainer_red_global_id = _input.get('trainer_red')
-        trainer_blue_global_id = _input.get('trainer_blue')
-        winner_global_id = _input.get('winner')
-        tournament_global_id = _input.get('tournament')
-
-        not_trainer_err = 'The given a ID is not a Trainer ID.'
-
-        kind, trainer_red_id = from_global_id(trainer_red_global_id)
-        if not kind == 'TrainerType':
-            raise Exception(not_trainer_err)
-
-        kind, trainer_blue_id = from_global_id(trainer_blue_global_id)
-        if not kind == 'TrainerType':
-            raise Exception(not_trainer_err)
-
-        # red e blue nao podem ser iguais
-        if trainer_red_id == trainer_blue_id:
-            raise Exception('IDs cant be identical.')
-
-        kind, winner_id = from_global_id(winner_global_id)
-        if not kind == 'TrainerType':
-            raise Exception(not_trainer_err)
-
-        # o vencedor devem ser red ou blue
-        if not winner_id == trainer_red_id and not winner_id == trainer_blue_id:
-            raise Exception('Winner must be one of the given trainers.')
-
-        kind, tournament_id = from_global_id(tournament_global_id)
-        if not kind == 'TournamentType':
-            raise Exception('The given tournament is invalid.')
-
-        try:
-            trainer_red = Trainer.objects.get(id=trainer_red_id)
-        except Trainer.DoesNotExist:
-            raise Exception('Sorry, the red trainer does not exist!')
-
-        try:
-            trainer_blue = Trainer.objects.get(id=trainer_blue_id)
-        except Trainer.DoesNotExist:
-            raise Exception('Sorry, the red trainer does not exist!')
-
-        try:
-            tournament = Tournament.objects.get(id=tournament_id)
-        except Tournament.DoesNotExist:
-            raise Exception('Sorry, the red trainer does not exist!')
-
-        # pega o score do red
-        try:
-            red_score = trainer_red.tournamentscore_set.get(
-                tournament_reference_id=tournament_id
-            )
-        except TournamentScore.DoesNotExist:
-            raise Exception(
-                'O trainer red não está registrado neste torneio.'
-            )
-
-        # Pega o score do blue
-        try:
-            blue_score = trainer_blue.tournamentscore_set.get(
-                tournament_reference_id=tournament_id
-            )
-        except TournamentScore.DoesNotExist:
-            raise Exception(
-                'O trainer blue não está registrado neste torneio.'
-            )
-
-        else:
-            try:
-                battle = TrainerBattle.objects.create(
-                    trainer_red_id=trainer_red_id,
-                    trainer_blue_id=trainer_blue_id,
-                    winner_id=winner_id
-                )
-            except Exception as ex:
-                raise Exception(ex)
-
-            blue_score.battles.add(battle)
-            red_score.battles.add(battle)
-            blue_score.save()
-            red_score.save()
-            battle.save()
-            return CreateTrainerBattle(battle)
+        leader.save()
+        return CreateLeader(leader)
 
 
 #######################################################
 #                  Update Mutations
 #######################################################
-class UpdateSeason(graphene.relay.ClientIDMutation):
-    '''
-        Updates a season information.
-    '''
-    season = graphene.Field(
-        SeasonType
+class UpdateLeague(graphene.relay.ClientIDMutation):
+    """
+    Updates a league.
+    """
+    league = graphene.Field(
+        LeagueType
     )
 
     class Input:
+        reference = graphene.String(required=False)
+        start_date = graphene.Date(required=False)
+        end_date = graphene.Date(required=False)
+        description = graphene.String(required=False)
         id = graphene.ID(
             required=True
         )
-        reference = graphene.String()
-        start_date = graphene.Date()
-        end_date = graphene.Date()
-        description = graphene.String()
 
     def mutate_and_get_payload(self, info, **_input):
-        reference = _input.get('reference')
-        start_date = _input.get('start_date')
-        end_date = _input.get('end_date')
+        reference = _input.get('reference', '')
+        start_date = _input.get('start_date', '')
+        end_date = _input.get('end_date', '')
         description = _input.get('description', '')
         global_id = _input.get('id')
-        _, season_id = from_global_id(global_id)    
+
+        kind, league_id = from_global_id(global_id)
+
+        # Verifica que o id é de uma League
+        if not kind == 'LeagueType':
+            raise Exception(
+                'The ID doesnt match with a League object!'
+            )
 
         try:
-            season = Season.objects.get(id=season_id)
-        except Season.DoesNotExist:
+            league = League.objects.get(id=league_id)
+        except League.DoesNotExist:
             raise Exception(
-                'Sorry, the given season does not exist!'
+                'Sorry, the given League does not exist!'
             )
-        else:
-            if reference:
-                season.reference = reference
-            if start_date:
-                season.start_date = start_date
-            if end_date:
-                season.end_date = end_date
-            if description:
-                season.description = description
-            season.save()
-            return UpdateSeason(season)
+
+        if reference:
+            league.reference = reference
+        if start_date:
+            league.start_date = start_date
+        if end_date:
+            league.end_date = end_date
+        if description:
+            league.description = description
+        league.save()
+
+        return UpdateLeague(league)
 
 
-class UpdateTournament(graphene.relay.ClientIDMutation):
-    '''
-        Updates a tournament
-    '''
-    tournament = graphene.Field(
-        TournamentType
+class UpdateTrainer(graphene.relay.ClientIDMutation):
+    """
+    Updates a trainer.
+    """
+    trainer = graphene.Field(
+        TrainerType
     )
 
     class Input:
@@ -726,115 +424,10 @@ class UpdateTournament(graphene.relay.ClientIDMutation):
             required=True
         )
         name = graphene.String()
-        start_date = graphene.Date()
-        end_date = graphene.Date()
-        description = graphene.String()
 
     def mutate_and_get_payload(self, info, **_input):
         global_id = _input.get('id')
         name = _input.get('name')
-        start_date = _input.get('start_date')
-        end_date = _input.get('end_date')
-        description = _input.get('description')
-
-        kind, tournament_id = from_global_id(global_id)
-
-        # Verifica que o id é de um Tournament
-        if not kind == 'TournamentType':
-            raise Exception(
-                'The ID doesnt match with a Tournament object!'
-            )
-
-        try:
-            tournament = Tournament.objects.get(id=tournament_id)
-        except Tournament.DoesNotExist:
-            raise Exception(
-                'Sorry, the given Tournament does not exist!'
-            )
-
-        else:
-            if name:
-                tournament.name = name
-            if start_date:
-                tournament.start_date = start_date
-            if end_date:
-                tournament.end_date = end_date
-            if description:
-                tournament.description = description
-            tournament.save()
-
-            return UpdateTournament(tournament)
-
-
-class UpdateLeague(graphene.relay.ClientIDMutation):
-    '''
-        Updates a league.
-    '''
-    league = graphene.Field(
-        LeagueType
-    )
-
-    class Input:
-        reference = graphene.String()
-        start_date = graphene.Date()
-        end_date = graphene.Date()
-        description = graphene.String()
-        id = graphene.ID(
-            required=True
-        )
-
-    def mutate_and_get_payload(self, info, **_input):
-        reference = _input.get('reference')
-        start_date = _input.get('start_date')
-        end_date = _input.get('end_date')
-        description = _input.get('description', '')
-        global_id = _input.get('id')
-
-        kind, league_id = from_global_id(global_id)
-
-        # Verifica que o id é de uma League
-        if not kind == 'LeagueType':
-            raise Exception(
-                'The ID doesnt match with a League object!'
-            )
-
-        try:
-            league = League.objects.get(id=league_id)
-        except League.DoesNotExist:
-            raise Exception(
-                'Sorry, the given League does not exist!'
-            )
-        else:
-            if reference:
-                league.reference = reference
-            if start_date:
-                league.start_date = start_date
-            if end_date:
-                league.end_date = end_date
-            if description:
-                league.description = description
-            league.save()
-
-            return UpdateLeague(league)
-
-
-class UpdateTrainer(graphene.relay.ClientIDMutation):
-    '''
-        Updates a trainer.
-    '''
-    trainer = graphene.Field(
-        TrainerType
-    )
-
-    class Input:
-        id = graphene.ID(
-            required=True
-        )
-        nickname = graphene.String()
-
-    def mutate_and_get_payload(self, info, **_input):
-        global_id = _input.get('id')
-        nickname = _input.get('nickname')
 
         kind, trainer_id = from_global_id(global_id)
 
@@ -850,32 +443,32 @@ class UpdateTrainer(graphene.relay.ClientIDMutation):
             raise Exception(
                 'Sorry, the given trainer does not exist!'
             )
-        else:
-            if nickname:
-                trainer.nickname = nickname
-            trainer.save()
-            return UpdateTrainer(trainer)
+
+        if name:
+            trainer.nickname = nickname
+        trainer.save()
+        return UpdateTrainer(trainer)
 
 
 class UpdateLeader(graphene.relay.ClientIDMutation):
-    '''
-        Updates a leader.
-    '''
+    """
+    Updates a leader.
+    """
     leader = graphene.Field(
         LeaderType
     )
 
     class Input:
         id = graphene.ID(required=True)
-        nickname = graphene.String()
-        pokemon_type = PokemonTypes()
-        role = Role()
+        name = graphene.String(required=False)
+        pokemon_type = PokemonTypes(required=False)
+        role = Role(required=False)
 
     def mutate_and_get_payload(self, info, **_input):
         global_id = _input.get('id')
-        nickname = _input.get('nickname')
-        pokemon_type = _input.get('pokemon_type')
-        role = _input.get('role')
+        name = _input.get('name', '')
+        pokemon_type = _input.get('pokemon_type', '')
+        role = _input.get('role', '')
 
         kind, leader_id = from_global_id(global_id)
         if not kind == 'LeaderType':
@@ -885,87 +478,24 @@ class UpdateLeader(graphene.relay.ClientIDMutation):
             leader = Leader.objects.get(id=leader_id)
         except Leader.DoesNotExist:
             raise Exception('Sorry, this leader does not exist.')
-        else:
-            if nickname:
-                leader.nickname = nickname
-            if pokemon_type:
-                leader.pokemon_type = pokemon_type
-            if role:
-                leader.role = role
-            leader.save()
-            return UpdateLeader(leader)
+
+        if name:
+            leader.nickname = nickname
+        if pokemon_type:
+            leader.pokemon_type = pokemon_type
+        if role:
+            leader.role = role
+        leader.save()
+        return UpdateLeader(leader)
 
 
 #######################################################
 #                  Delete Mutations
 #######################################################
-class DeleteSeason(graphene.relay.ClientIDMutation):
-    '''
-        Deletes a season.
-    '''
-    season = graphene.Field(
-        SeasonType
-    )
-
-    class Input:
-        id = graphene.ID(
-            required=True
-        )
-
-    def mutate_and_get_payload(self, info, **_input):
-        global_id = _input.get('id')
-        _, season_id = from_global_id(global_id)
-
-        try:
-            season = Season.objects.get(id=season_id)
-        except Season.DoesNotExist:
-            raise Exception(
-                'Sorry, the given season does not exist!'
-            )
-        else:
-            season.delete()
-            return DeleteSeason(season)
-
-
-class DeleteTournament(graphene.relay.ClientIDMutation):
-    '''
-        Deletes a tournament
-    '''
-    tournament = graphene.Field(
-        TournamentType
-    )
-
-    class Input:
-        id = graphene.ID(
-            required=True
-        )
-
-    def mutate_and_get_payload(self, info, **_input):
-        global_id = _input.get('id')
-        kind, tournament_id = from_global_id(global_id)
-
-        # Verifica que o id é de um Tournament
-        if not kind == 'TournamentType':
-            raise Exception(
-                'The ID doesnt match with a Tournament object!'
-            )
-
-        try:
-            tournament = Tournament.objects.get(id=tournament_id)
-        except Tournament.DoesNotExist:
-            raise Exception(
-                'Sorry, the given Tournament does not exist!'
-            )
-
-        else:
-            tournament.delete()
-            return DeleteTournament(tournament)
-
-
 class DeleteLeague(graphene.relay.ClientIDMutation):
-    '''
-        Deletes a league.
-    '''
+    """
+    Deletes a league.
+    """
     league = graphene.Field(
         LeagueType
     )
@@ -976,7 +506,7 @@ class DeleteLeague(graphene.relay.ClientIDMutation):
         )
 
     def mutate_and_get_payload(self, info, **_input):
-        global_id = _input.get('id')
+        global_id = _input.get('id', '')
         kind, league_id = from_global_id(global_id)
 
         # Verifica que o id é de uma League
@@ -991,16 +521,16 @@ class DeleteLeague(graphene.relay.ClientIDMutation):
             raise Exception(
                 'Sorry, the given League does not exist!'
             )
-        else:
-            league.delete()
 
-            return DeleteLeague(league)
+        league.delete()
+
+        return DeleteLeague(league)
 
 
 class DeleteTrainer(graphene.relay.ClientIDMutation):
-    '''
-        Deletes a trainer.
-    '''
+    """
+    Deletes a trainer.
+    """
     trainer = graphene.Field(
         TrainerType
     )
@@ -1011,7 +541,7 @@ class DeleteTrainer(graphene.relay.ClientIDMutation):
         )
 
     def mutate_and_get_payload(self, info, **_input):
-        global_id = _input.get('id')
+        global_id = _input.get('id', '')
         kind, trainer_id = from_global_id(global_id)
 
         # Check if is the right ID
@@ -1026,15 +556,15 @@ class DeleteTrainer(graphene.relay.ClientIDMutation):
             raise Exception(
                 'Sorry, the given trainer does not exist!'
             )
-        else:
-            trainer.delete()
-            return DeleteTrainer(trainer)
+
+        trainer.delete()
+        return DeleteTrainer(trainer)
 
 
 class DeleteLeader(graphene.relay.ClientIDMutation):
-    '''
-        Deletes a leader.
-    '''
+    """
+    Deletes a leader.
+    """
     leader = graphene.Field(
         LeaderType
     )
@@ -1053,88 +583,19 @@ class DeleteLeader(graphene.relay.ClientIDMutation):
             leader = Leader.objects.get(id=leader_id)
         except Leader.DoesNotExist:
             raise Exception('Sorry, this leader does not exist.')
-        else:
-            leader.delete()
-            return DeleteLeader(leader)
+
+        leader.delete()
+        return DeleteLeader(leader)
 
 
 #######################################################
 #                  Other Mutations
 #######################################################
-class TournamentRegistration(graphene.relay.ClientIDMutation):
-    '''
-        Register a trainer into a tournament.
-    '''
-    tournament_score = graphene.Field(
-        TournamentScoreType
-    )
-
-    class Input:
-        trainer = graphene.ID(
-            required=True
-        )
-        tournament = graphene.ID(
-            required=True
-        )
-
-    def mutate_and_get_payload(self, info, **_input):
-        trainer_global_id = _input.get('trainer')
-        tournament_global_id = _input.get('tournament')
-
-        kind, trainer_id = from_global_id(trainer_global_id)
-        if not kind == 'TrainerType':
-            raise Exception(
-                'Wrong Trainer ID was given.'
-            )
-
-        kind, tournament_id = from_global_id(tournament_global_id)
-        if not kind == 'TournamentType':
-            raise Exception(
-                'Wrong Tournament ID was given.'
-            )
-
-        try:
-            trainer = Trainer.objects.get(id=trainer_id)
-        except Trainer.DoesNotExist:
-            raise Exception(
-                'Sorry, this trainer does not exist.'
-            )
-
-        try:
-            tournament = Tournament.objects.get(id=tournament_id)
-        except Tournament.DoesNotExist:
-            raise Exception(
-                'Sorry, this tournament does not exist.'
-            )
-
-        # TODO verificar se o torneio ja nao foi encerrado
-
-        reference = '{} registration at {}'.format(
-            trainer.nickname,
-            tournament.name
-        )
-
-        try:
-            score = TournamentScore.objects.create(
-                reference=reference,
-                tournament_reference=tournament,
-                trainer_reference=trainer
-            )
-        except Exception as ex:
-            raise Exception(ex)
-
-        else:
-            score.save()
-            return TournamentRegistration(score)
-
-
 class LeagueRegistration(graphene.relay.ClientIDMutation):
-    '''
-        Register a trainer into a league.
-    '''
-    league_score = graphene.Field(
-        LeagueScoreType
-    )
+    """
+    Register a trainer into a league.
+    """
+    registration = graphene.String()
 
     class Input:
         trainer = graphene.ID(
@@ -1174,25 +635,280 @@ class LeagueRegistration(graphene.relay.ClientIDMutation):
                 'Sorry, this league does not exist.'
             )
 
-        # TODO verificar se a liga ja nao foi encerrada
+        if trainer in league.competitors.all():
+            raise Exception('This trainer is already registered in this league')
 
-        reference = '{} registration at {}'.format(
-            trainer.nickname,
-            league.reference
+        # TODO verificar se a liga ja nao foi encerrada
+        league.competitors.add(trainer)
+        league.save()
+
+        trainer.leagues_counter += 1
+        trainer.save()
+
+        # Cria um score do treinador para esta liga
+        score = Score.objects.create(
+            trainer=trainer,
+            league=league
+        )
+        score.save()
+
+        return LeagueRegistration(
+            f'{trainer.name} registration at {league.reference} complete!'
         )
 
+
+class LeaderRegistration(graphene.relay.ClientIDMutation):
+    """
+    Register a leader in a league.
+    """
+    response = graphene.String()
+
+    class Input:
+        leader = graphene.ID(required=True)
+        league = graphene.ID(required=True)
+
+    def mutate_and_get_payload(self, info, **_input):
+        leader_global_id = _input.get('leader')
+        league_global_id = _input.get('league')
+
+        # verifica que o id de lider é realmente um id de lider
+        kind, leader_id = from_global_id(leader_global_id)
+        if not kind == 'LeaderType':
+            raise Exception('Wrong leader ID.')
+
         try:
-            score = LeagueScore.objects.create(
-                reference=reference,
-                league_reference=league,
-                trainer_reference=trainer
-            )
-        except Exception as ex:
-            raise Exception(ex)
+            leader = Leader.objects.get(id=leader_id)
+        except Leader.DoesNotExist:
+            raise Exception('Sorry, this leader does not exist.')
+
+        # verifica que o id da liga é realmente um id de liga
+        kind, league_id = from_global_id(league_global_id)
+        if not kind == 'LeagueType':
+            raise Exception('Wrong league ID.')
+
+        try:
+            league = League.objects.get(id=league_id)
+        except League.DoesNotExist:
+            raise Exception('Sorry, this league does not exist.')
+
+        # verifica se o lider ja esta registrado nesta liga
+        if leader in league.gym_leaders.all() or \
+            leader in league.elite_four.all() or \
+            leader == league.champion:
+            raise Exception('This leader is already registered in this league!')
+
+        # verifica para qual função o líder foi designado
+        if leader.role == 'Gym Leader':
+            league.gym_leaders.add(leader)
+
+        elif leader.role == 'Elite Four':
+            if not len(league.elite_four.all()) < 4:
+                raise Exception('The league elite four is already fullfilled')
+            league.elite_four.add(leader)
+
+        elif leader.role == 'Champion':
+            if not league.champion:
+                league.champion = leader
+            else:
+                raise Exception(
+                    'This league champion has already been registered'
+                )
 
         else:
-            score.save()
-            return LeagueRegistration(score)
+            raise Exception(
+                'This leader has no role yet. Please give him a role before' \
+                'registering at this league!'
+            )
+
+        league.save()
+        leader.save()
+
+        return LeaderRegistration(
+            f'The leader {leader.name} has been registered ' \
+            f'at league {league.reference}'
+        )
+
+
+class BattleRegister(graphene.relay.ClientIDMutation):
+    """
+    Register a battle between a trainer and a leader.
+    """
+    battle = graphene.Field(BattleType)
+
+    class Input:
+        league = graphene.ID(required=True)
+        trainer_name = graphene.String(required=True)
+        leader_name = graphene.String(required=True)
+        winner_name = graphene.String(required=True)
+
+    def mutate_and_get_payload(self, info, **_input):
+        league_global_id = _input.get('league')
+        trainer_name = _input.get('trainer_name')
+        leader_name = _input.get('leader_name')
+        winner = _input.get('winner_name')
+
+        # Verifica a liga fornecida
+        kind, league_id = from_global_id(league_global_id)
+        if not kind == 'LeagueType':
+            raise Exception('Wrong league ID.')
+
+        try:
+            league = League.objects.get(id=league_id)
+        except League.DoesNotExist:
+            raise Exception('Sorry, this league does not exist.')
+
+        # Tenta recupera o treiandor
+        try:
+            trainer = Trainer.objects.get(name=trainer_name)
+        except Trainer.DoesNotExist:
+            raise Exception(
+                f'Trainer {trainer_name} not found on database!'
+            )
+
+        # Tenta recupera o líder
+        try:
+            leader = Leader.objects.get(name=leader_name)
+        except Leader.DoesNotExist:
+            raise Exception(
+                f'Trainer {leader_name} not found on database!'
+            )
+
+        # Recupera o score do treinador
+        try:
+            trainer_score = trainer.score_set.get(league=league)
+        except Score.DoesNotExist:
+            raise Exception(
+                'This trainer doesnt seems to be registered ' \
+                'on the given league!'
+            )
+
+        # Verifica que o vencedor é um dos dois fornecidos
+        if not winner == trainer.name and not winner == leader.name:
+            raise Exception('The winner must be the given leader or trainer.')
+
+        # Registra a batalha
+        battle = Battle.objects.create(
+            leader=leader,
+            trainer=trainer,
+            winner_name=winner
+        )
+        battle.save()
+
+        # incrementa o contrador de batalhas dos lutadores
+        trainer.battle_counter += 1
+        leader.battle_counter += 1
+
+        # Se o vencedor for o treinador
+        if winner == trainer.name:
+            # Atualiza os stats dos lutadores e do score
+            trainer.total_wins += 1
+            trainer_score.wins += 1
+            leader.total_losses += 1
+
+        # Se o vencedor for o lider
+        else:
+            # Atualiza os stats dos lutadores e do score
+            trainer.total_losses += 1
+            trainer_score.losses += 1
+            leader.total_wins += 1
+
+        # Atualiza a porcentagem de vitorias/derrotas dos lutadores
+        trainer.win_percentage = (trainer.total_wins / trainer.battle_counter) * 100
+        trainer.loose_percentage = (trainer.total_losses / trainer.battle_counter) * 100
+        leader.win_percentage = (leader.total_wins / leader.battle_counter) * 100
+        leader.loose_percentage = (leader.total_losses / leader.battle_counter) * 100
+
+        trainer.save()
+        leader.save()
+        trainer_score.save()
+
+        return BattleRegister(battle)
+
+
+class AddBadgeToTrainer(graphene.relay.ClientIDMutation):
+    """
+    Gives a badge do a trainer.
+    """
+    response = graphene.String()
+
+    class Input:
+        trainer_name = graphene.String(required=True)
+        badge = graphene.String(required=True)
+        league = graphene.ID(required=True)
+
+    def mutate_and_get_payload(self, info, **_input):
+        trainer_name = _input.get('trainer_name')
+        badge_reference = _input.get('badge').title()
+        league_global_id = _input.get('league')
+
+        # Verifica a liga fornecida
+        kind, league_id = from_global_id(league_global_id)
+        if not kind == 'LeagueType':
+            raise Exception('Wrong league ID.')
+        try:
+            league = League.objects.get(id=league_id)
+        except League.DoesNotExist:
+            raise Exception('Sorry, this league does not exist.')
+
+        # Tenta recuperar a insígnia do banco de dados
+        try:
+            badge = Badge.objects.get(reference=badge_reference)
+        except Badge.DoesNotExist:
+            raise Exception('This Badge does not exist!')
+
+        # Tenta recuperar o treinador
+        try:
+            trainer = Trainer.objects.get(name=trainer_name)
+        except Trainer.DoesNotExist:
+            raise Exception(f'The trainer {trainer_name} does not exist')
+
+        # Recupera o score do treinador
+        try:
+            trainer_score = trainer.score_set.get(league=league)
+        except Score.DoesNotExist:
+            raise Exception(
+                'This trainer doesnt seems to be registered ' \
+                'on the given league!'
+            )
+
+        # verifica que o treinaro ainda não possui esta insígina
+        if badge in trainer_score.badges.all():
+            raise Exception('This trainer already have this badge!')
+
+        # Adiciona a insígnia ao treinador
+        trainer_score.badges.add(badge)
+        trainer.badge_counter += 1
+
+        trainer_score.save()
+        trainer.save()
+
+        return AddBadgeToTrainer(
+            f'{trainer_name} received {badge_reference} badge!'
+        )
+
+
+class AutoCreateBadges(graphene.relay.ClientIDMutation):
+    """
+    Auto creates all badge types.
+    """
+    response = graphene.List(graphene.String)
+
+    def mutate_and_get_payload(self, info, **kwargs):
+        badge_types = (
+            'Normal', 'Fire', 'Water', 'Grass', 'Electric', 'Ice', 'Fighting',
+            'Poison', 'Ground', 'Flying', 'Psychic', 'Bug', 'Rock', 'Ghost',
+            'Dark', 'Dragon', 'Steel', 'Fairy'
+        )
+        badges_created = []
+        for badge in badge_types:
+            try:
+                bdg = Badge.objects.create(reference=badge)
+                badges_created.append(badge)
+                bdg.save()
+            except:
+                pass
+
+        return AutoCreateBadges(badges_created)
 
 
 #######################################################
@@ -1200,27 +916,23 @@ class LeagueRegistration(graphene.relay.ClientIDMutation):
 #######################################################
 class Mutation:
     # Create
-    create_season = CreateSeason.Field()
-    create_tournament = CreateTournament.Field()
     create_league = CreateLeague.Field()
     create_trainer = CreateTrainer.Field()
     create_leader = CreateLeader.Field()
-    create_trainer_battle = CreateTrainerBattle.Field()
 
     # Update
-    update_season = UpdateSeason.Field()
-    update_tournament = UpdateTournament.Field()
     update_league = UpdateLeague.Field()
     update_trainer = UpdateTrainer.Field()
     update_leader = UpdateLeader.Field()
 
     # Delete
-    delete_season = DeleteSeason.Field()
-    delete_tournament = DeleteTournament.Field()
     delete_league = DeleteLeague.Field()
     delete_trainer = DeleteTrainer.Field()
     delete_leader = DeleteLeader.Field()
 
     # Other
-    tournament_registration = TournamentRegistration.Field()
     league_registration = LeagueRegistration.Field()
+    leader_registration = LeaderRegistration.Field()
+    battle_register = BattleRegister.Field()
+    add_badge_to_trainer = AddBadgeToTrainer.Field()
+    auto_create_badges = AutoCreateBadges.Field()
