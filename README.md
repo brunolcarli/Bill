@@ -10,3 +10,50 @@
 ABP Backend
 
 </td></tr></table>
+
+
+# Rodando a API
+
+Ref: Unix Systems (Linux, Mac)
+
+## - Localmente
+
+Em uma virtualenv instalar as dependências:
+
+```
+$ make install
+```
+
+Crie um arquivo `env` contendo as configurações de ambiente:
+
+```
+export DJANGO_SECRET_KEY=<sua_django_secret_key>
+export DB_NAME=<seu_db_name>
+export DB_USER=<seu_db_user>
+export DB_PASS=<seu_db_password>
+export DB_PORT=<sua_porta_padra_para_o_db>
+```
+
+Acione as variáveis de ambiente:
+
+```
+$ source env
+```
+
+Rode as migrações do banco de dados:
+
+```
+$ make migrate
+```
+
+Finalmente, rode a plataforma:
+
+```
+$ make run
+```
+
+A API estará rodando em `http://localhost:3122/graphql`
+
+## - Docker
+
+`Em desenvolvimento`
