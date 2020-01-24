@@ -887,6 +887,30 @@ class AddBadgeToTrainer(graphene.relay.ClientIDMutation):
         )
 
 
+class AutoCreateBadges(graphene.relay.ClientIDMutation):
+    """
+    Auto creates all badge types.
+    """
+    response = graphene.List(graphene.String)
+
+    def mutate_and_get_payload(self, info, **kwargs):
+        badge_types = (
+            'Normal', 'Fire', 'Water', 'Grass', 'Electric', 'Ice', 'Fighting',
+            'Poison', 'Ground', 'Flying', 'Psychic', 'Bug', 'Rock', 'Ghost',
+            'Dark', 'Dragon', 'Steel', 'Fairy'
+        )
+        badges_created = []
+        for badge in badge_types:
+            try:
+                bdg = Badge.objects.create(reference=badge)
+                badges_created.append(badge)
+                bdg.save()
+            except:
+                pass
+
+        return AutoCreateBadges(badges_created)
+
+
 #######################################################
 #                  Main Mutation
 #######################################################
@@ -911,3 +935,4 @@ class Mutation:
     leader_registration = LeaderRegistration.Field()
     battle_register = BattleRegister.Field()
     add_badge_to_trainer = AddBadgeToTrainer.Field()
+    auto_create_badges = AutoCreateBadges.Field()
