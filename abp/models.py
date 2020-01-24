@@ -134,4 +134,4 @@ class Badge(models.Model):
     Defines a badge representing the victory of a trainer over a
     Gym Leader.
     """
-    reference = models.CharField(max_length=100)
+    reference = models.CharField(max_length=100, unique=True)
