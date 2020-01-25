@@ -10,7 +10,6 @@ def resolve_leagues(**kwargs):
     Resolve a consulta de ligas.
     """
     league_global_id = kwargs.get('id')
-
     if league_global_id:
         kind, league_id = from_global_id(league_global_id)
         if not kind == 'LeagueType':
@@ -23,3 +22,15 @@ def resolve_leagues(**kwargs):
 
         return [league]
     return League.objects.all()
+
+
+def resolve_trainers(**kwargs):
+    """
+    Resolve a consulta de treinadores.
+    """
+    if 'id' in kwargs.keys():
+        kind, trainer_id = from_global_id(kwargs.pop('id'))
+        if not kind == 'TrainerType':
+            raise Exception('The given ID is not a trainer ID!')
+        kwargs['id'] = trainer_id
+    return Trainer.objects.filter(**kwargs)
