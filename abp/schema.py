@@ -794,6 +794,9 @@ class BattleRegister(graphene.relay.ClientIDMutation):
         )
         battle.save()
 
+        # Relaciona a batalha criada ao score do treinador
+        trainer_score.battles.add(battle)
+
         # incrementa o contrador de batalhas dos lutadores
         trainer.battle_counter += 1
         leader.battle_counter += 1
