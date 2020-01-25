@@ -261,7 +261,8 @@ class Query(object):
     ###################################################
     badges = graphene.String()
     def resolve_badges(self, info, **kwargs):
-        return Badge.objects.all()
+        return [badge.reference for badge in Badge.objects.all()]
+
 
 #######################################################
 #                  Create Mutations
