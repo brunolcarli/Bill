@@ -1,7 +1,7 @@
 import graphene
 from abp.models import (Battle, League, Trainer, Score, Leader, Badge)
 from graphql_relay import from_global_id
-
+from abp.resolvers import resolve_leagues
 
 
 #######################################################
@@ -215,10 +215,13 @@ class Query(object):
     #                       Leagues
     ###################################################
     leagues = graphene.relay.ConnectionField(
-        LeagueConnection
+        LeagueConnection,
+        id=graphene.ID(
+            description='Filters league by ID.'
+        )
     )
     def resolve_leagues(self, info, **kwargs):
-        return League.objects.all()
+        return resolve_leagues(**kwargs)
 
     ###################################################
     #                       Trainers
