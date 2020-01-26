@@ -1,7 +1,7 @@
 import graphene
 from abp.models import (Battle, League, Trainer, Score, Leader, Badge)
 from graphql_relay import from_global_id
-from abp.resolvers import resolve_leagues, resolve_trainers
+from abp.resolvers import resolve_leagues, resolve_trainers, resolve_leaders
 
 
 #######################################################
@@ -273,10 +273,32 @@ class Query(object):
     #                       Leaders
     ###################################################
     leaders = graphene.relay.ConnectionField(
-        LeaderConnection
+        LeaderConnection,
+        id=graphene.ID(description='Filters by leader ID.'),
+        name__icontains=graphene.String(
+            description='Filters by leader name containing the given string.'
+        ),
+        battle_counter__gte=graphene.Int(
+            description='Leaders battle counter greater equal the given value.'
+        ),
+        battle_counter__lte=graphene.Int(
+            description='Leaders battle counter less equal the given value.'
+        ),
+        win_percentage__gte=graphene.Float(
+            description='Leaders win percentage greater equal the given value.'
+        ),
+        win_percentage__lte=graphene.Float(
+            description='Leaders win percentage less equal the given value.'
+        ),
+        loose_percentage__gte=graphene.Float(
+            description='Leaders loose percentage greater equal the given value.'
+        ),
+        loose_percentage__lte=graphene.Float(
+            description='Leaders loose percentage less equal the given value.'
+        ),
     )
     def resolve_leaders(self, info, **kwargs):
-        return Leader.objects.all()
+        return resolve_leaders(**kwargs)
 
     ###################################################
     #                       Scores
