@@ -2,7 +2,8 @@
 Módulo contendo os métodos de resolução de objetos para as consultas GraphQL.
 """
 from abp.models import (Battle, League, Trainer, Score, Leader, Badge)
-from graphql_relay import from_global_id
+from abp.utils import validate_global_id
+
 
 
 def resolve_leagues(**kwargs):
@@ -11,17 +12,11 @@ def resolve_leagues(**kwargs):
     """
     league_global_id = kwargs.get('id')
     if league_global_id:
-        kind, league_id = from_global_id(league_global_id)
-        if not kind == 'LeagueType':
-            raise Exception('The given ID is not a league ID!')
+        if 'id' in kwargs.keys():
+            league_id = validate_global_id(kwargs.pop('id'), 'LeagueType')
+            kwargs['id'] = league_id
 
-        try:
-            league = League.objects.get(id=league_id)
-        except League.DoesNotExist:
-            raise Exception('This league does not exists!')
-
-        return [league]
-    return League.objects.all()
+    return League.objects.filter(**kwargs)
 
 
 def resolve_trainers(**kwargs):
@@ -29,8 +24,7 @@ def resolve_trainers(**kwargs):
     Resolve a consulta de treinadores.
     """
     if 'id' in kwargs.keys():
-        kind, trainer_id = from_global_id(kwargs.pop('id'))
-        if not kind == 'TrainerType':
-            raise Exception('The given ID is not a trainer ID!')
+        trainer_id = validate_global_id(kwargs.pop('id'), 'TrainerType')
         kwargs['id'] = trainer_id
+
     return Trainer.objects.filter(**kwargs)
