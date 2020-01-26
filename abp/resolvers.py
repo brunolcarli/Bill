@@ -39,3 +39,20 @@ def resolve_leaders(**kwargs):
         kwargs['id'] = leader_id
 
     return Leader.objects.filter(**kwargs)
+
+
+def resolve_scores(**kwargs):
+    """
+    Resolve a consulta de scores.
+    """
+    if 'league__id__in' in kwargs.keys():
+        global_ids = kwargs.pop('league__id__in')
+        league_ids = [validate_global_id(i, 'LeagueType') for i in global_ids]
+        kwargs['league__id__in'] = league_ids
+
+    if 'trainer__id__in' in kwargs.keys():
+        global_ids = kwargs.pop('trainer__id__in')
+        trainer_ids = [validate_global_id(i, 'TrainerType') for i in global_ids]
+        kwargs['trainer__id__in'] = trainer_ids
+
+    return Score.objects.filter(**kwargs)
