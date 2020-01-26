@@ -1,7 +1,7 @@
 import graphene
 from abp.models import (Battle, League, Trainer, Score, Leader, Badge)
 from graphql_relay import from_global_id
-from abp.resolvers import resolve_leagues
+from abp.resolvers import resolve_leagues, resolve_trainers
 
 
 #######################################################
@@ -218,7 +218,10 @@ class Query(object):
         LeagueConnection,
         id=graphene.ID(
             description='Filters league by ID.'
-        )
+        ),
+        reference__icontains=graphene.String(
+            description='Filters league which referece contains the give value'
+        ),
     )
     def resolve_leagues(self, info, **kwargs):
         return resolve_leagues(**kwargs)
@@ -227,10 +230,44 @@ class Query(object):
     #                       Trainers
     ###################################################
     trainers = graphene.relay.ConnectionField(
-        TrainerConnection
+        TrainerConnection,
+        id=graphene.ID(description='Filters by trainer ID.'),
+        name__icontains=graphene.String(
+            description='Filters by trainer name containing the given string.'
+        ),
+        battle_counter__gte=graphene.Int(
+            description='Trainers battle counter greater equal the given value.'
+        ),
+        battle_counter__lte=graphene.Int(
+            description='Trainers battle counter less equal the given value.'
+        ),
+        badge_counter__gte=graphene.Int(
+            description='Trainers badge counter greater equal the given value.'
+        ),
+        badge_counter__lte=graphene.Int(
+            description='Trainers badge counter less equal the given value.'
+        ),
+        leagues_counter__gte=graphene.Int(
+            description='Trainers league counter greater equal the given value.'
+        ),
+        leagues_counter__lte=graphene.Int(
+            description='Trainers league counter less equal the given value.'
+        ),
+        win_percentage__gte=graphene.Float(
+            description='Trainers win percentage greater equal the given value.'
+        ),
+        win_percentage__lte=graphene.Float(
+            description='Trainers win percentage less equal the given value.'
+        ),
+        loose_percentage__gte=graphene.Float(
+            description='Trainers loose percentage greater equal the given value.'
+        ),
+        loose_percentage__lte=graphene.Float(
+            description='Trainers loose percentage less equal the given value.'
+        ),
     )
     def resolve_trainers(self, info, **kwargs):
-        return Trainer.objects.all()
+        return resolve_trainers(**kwargs)
 
     ###################################################
     #                       Leaders
