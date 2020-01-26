@@ -28,3 +28,14 @@ def resolve_trainers(**kwargs):
         kwargs['id'] = trainer_id
 
     return Trainer.objects.filter(**kwargs)
+
+
+def resolve_leaders(**kwargs):
+    """
+    Resolve a consulta de líderes.
+    """
+    if 'id' in kwargs.keys():
+        leader_id = validate_global_id(kwargs.pop('id'), 'LeaderType')
+        kwargs['id'] = leader_id
+
+    return Leader.objects.filter(**kwargs)
