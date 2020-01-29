@@ -57,6 +57,8 @@ class Trainer(models.Model):
         blank=False,
         unique=True
     )
+    lv = models.IntegerField(default=1)
+    next_lv = models.IntegerField(default=5)
     join_date = models.DateTimeField(auto_now_add=True)
     battle_counter = models.IntegerField(default=0)
     badge_counter = models.IntegerField(default=0)
@@ -65,6 +67,10 @@ class Trainer(models.Model):
     loose_percentage = models.FloatField(default=0)
     total_wins = models.IntegerField(default=0)
     total_losses = models.IntegerField(default=0)
+    # nintendo friend club ID
+    fc = models.CharField(max_length=20, blank=True, null=True)
+    # pokemon showdown ID (usually a nickname)
+    sd_id = models.CharField(max_length=50, blank=True, null=True)
 
 
 class Leader(Trainer):
