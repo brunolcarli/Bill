@@ -93,10 +93,10 @@ class LeaderType(graphene.ObjectType):
     battle_counter = graphene.Int()
     win_percentage = graphene.Float()
     loose_percentage = graphene.Float()
-    scores = graphene.relay.ConnectionField('abp.schema.ScoreConnection')
-
-    def resolve_scores(self, info, **kwargs):
-        return [score for score in self.score_set.all()]
+    lv = graphene.Int()
+    next_lv = graphene.Int()
+    fc = graphene.String()
+    sd_id = graphene.String()
 
     class Meta:
         interfaces = (graphene.relay.Node,)
@@ -115,6 +115,10 @@ class TrainerType(graphene.ObjectType):
     loose_percentage = graphene.Float()
     leagues = graphene.relay.ConnectionField('abp.schema.LeagueConnection')
     scores = graphene.relay.ConnectionField('abp.schema.ScoreConnection')
+    lv = graphene.Int()
+    next_lv = graphene.Int()
+    fc = graphene.String()
+    sd_id = graphene.String()
 
     def resolve_scores(self, info, **kwargs):
         return [score for score in self.score_set.all()]
