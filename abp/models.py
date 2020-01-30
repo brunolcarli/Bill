@@ -58,6 +58,7 @@ class Trainer(models.Model):
         unique=True
     )
     lv = models.IntegerField(default=1)
+    exp = models.IntegerField(default=0)
     next_lv = models.IntegerField(default=5)
     join_date = models.DateTimeField(auto_now_add=True)
     battle_counter = models.IntegerField(default=0)
