@@ -1,0 +1,33 @@
+version: '3'
+
+services:
+
+    bill_db:
+        image: mariadb:10.3
+        environment:
+          MYSQL_ROOT_PASSWORD: $MYSQL_ROOT_PASSWORD
+          MYSQL_USER: $MYSQL_USER
+          MYSQL_DATABASE: $MYSQL_DATABASE
+          MYSQL_PASSWORD: $MYSQL_PASSWORD
+        ports:
+          - "3306:3306"
+    
+    bill_api:
+        build: .    
+        image: bill_api:devel
+        restart: on-failure
+        container_name: bill_api_service_container
+        command: gunicorn -w 3 bill.wsgi:application -b :3122
+        environment:
+          DJANGO_SETTINGS_MODULE: $DJANGO_SETTINGS_MODULE
+          DJANGO_SECRET_KEY: $DJANGO_SECRET_KEY
+        volumes:
+          - .:/app
+          - static_data:/app/static
+        ports:
+          - "3122:3122"
+        depends_on:
+          - bill_db
+
+volumes:
+  static_data:
