@@ -1,8 +1,10 @@
+from math import ceil
 import graphene
 from abp.models import (Battle, League, Trainer, Score, Leader, Badge)
 from graphql_relay import from_global_id
 from abp.resolvers import (resolve_leagues, resolve_trainers, resolve_leaders,
                            resolve_scores, resolve_battles)
+from abp.utils import get_exp, lv_update
 
 
 #######################################################
@@ -97,6 +99,7 @@ class LeaderType(graphene.ObjectType):
     next_lv = graphene.Int()
     fc = graphene.String()
     sd_id = graphene.String()
+    exp = graphene.Int()
 
     class Meta:
         interfaces = (graphene.relay.Node,)
@@ -119,6 +122,7 @@ class TrainerType(graphene.ObjectType):
     next_lv = graphene.Int()
     fc = graphene.String()
     sd_id = graphene.String()
+    exp = graphene.Int()
 
     def resolve_scores(self, info, **kwargs):
         return [score for score in self.score_set.all()]
@@ -885,6 +889,9 @@ class BattleRegister(graphene.relay.ClientIDMutation):
         trainer.battle_counter += 1
         leader.battle_counter += 1
 
+        # calcula o total de experência que a batalha fornecerá
+        exp = get_exp(trainer.lv, leader.lv)
+
         # Se o vencedor for o treinador
         if winner == trainer.name:
             # Atualiza os stats dos lutadores e do score
@@ -892,12 +899,24 @@ class BattleRegister(graphene.relay.ClientIDMutation):
             trainer_score.wins += 1
             leader.total_losses += 1
 
+            # Adiciona experiência e recalcula o Lv
+            trainer.exp += exp
+            leader.exp += ceil(exp/2)
+            lv_update(trainer)
+            lv_update(leader)
+
         # Se o vencedor for o lider
         else:
             # Atualiza os stats dos lutadores e do score
             trainer.total_losses += 1
             trainer_score.losses += 1
             leader.total_wins += 1
+
+            # Adiciona experiência e recalcula o Lv
+            trainer.exp += ceil(exp/2)
+            leader.exp += exp
+            lv_update(trainer)
+            lv_update(leader)
 
         # Atualiza a porcentagem de vitorias/derrotas dos lutadores
         trainer.win_percentage = (trainer.total_wins / trainer.battle_counter) * 100
