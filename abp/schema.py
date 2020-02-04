@@ -100,6 +100,7 @@ class LeaderType(graphene.ObjectType):
     fc = graphene.String()
     sd_id = graphene.String()
     exp = graphene.Int()
+    discord_id = graphene.Int()
 
     class Meta:
         interfaces = (graphene.relay.Node,)
@@ -123,6 +124,7 @@ class TrainerType(graphene.ObjectType):
     fc = graphene.String()
     sd_id = graphene.String()
     exp = graphene.Int()
+    discord_id = graphene.String()
 
     def resolve_scores(self, info, **kwargs):
         return [score for score in self.score_set.all()]
@@ -274,6 +276,9 @@ class Query(object):
         loose_percentage__lte=graphene.Float(
             description='Trainers loose percentage less equal the given value.'
         ),
+        discord_id=graphene.String(
+            description='Trainer by discord user ID'
+        ),
     )
     def resolve_trainers(self, info, **kwargs):
         return resolve_trainers(**kwargs)
@@ -397,14 +402,14 @@ class CreateTrainer(graphene.relay.ClientIDMutation):
     )
 
     class Input:
-        name = graphene.String(required=True)
+        discord_id = graphene.String(required=True)
 
     def mutate_and_get_payload(self, info, **_input):
-        name = _input.get('name')
+        discord_id = _input.get('discord_id')
 
         try:
             trainer = Trainer.objects.create(
-                name=name
+                discord_id=discord_id
             )
         except Exception as ex:
             raise Exception(ex)

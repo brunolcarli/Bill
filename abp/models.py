@@ -53,8 +53,8 @@ class Trainer(models.Model):
     """
     name = models.CharField(
         max_length=25,
-        null=False,
-        blank=False,
+        null=True,
+        blank=True,
         unique=True
     )
     lv = models.IntegerField(default=1)
@@ -72,6 +72,8 @@ class Trainer(models.Model):
     fc = models.CharField(max_length=20, blank=True, null=True)
     # pokemon showdown ID (usually a nickname)
     sd_id = models.CharField(max_length=50, blank=True, null=True)
+    # usuario discord
+    discord_id = models.CharField(max_length=80, blank=True, null=True)
 
 
 class Leader(Trainer):
