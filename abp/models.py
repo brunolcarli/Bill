@@ -69,11 +69,11 @@ class Trainer(models.Model):
     total_wins = models.IntegerField(default=0)
     total_losses = models.IntegerField(default=0)
     # nintendo friend club ID
-    fc = models.CharField(max_length=20, blank=True, null=True)
+    fc = models.CharField(max_length=20, blank=True, null=True, unique=True)
     # pokemon showdown ID (usually a nickname)
-    sd_id = models.CharField(max_length=50, blank=True, null=True)
+    sd_id = models.CharField(max_length=50, blank=True, null=True, unique=True)
     # usuario discord
-    discord_id = models.CharField(max_length=80, blank=True, null=True)
+    discord_id = models.CharField(max_length=80, blank=True, null=True, unique=True)
 
 
 class Leader(Trainer):
