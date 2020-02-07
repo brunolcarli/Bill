@@ -76,7 +76,7 @@ class Trainer(models.Model):
     discord_id = models.CharField(max_length=80, blank=True, null=True, unique=True)
 
 
-class Leader(Trainer):
+class Leader(models.Model):
     """
     Defines a leader.
     A leader can be a gym leader, elite four or champion.
@@ -94,6 +94,29 @@ class Leader(Trainer):
     )
     pokemon_type = models.CharField(max_length=100)
     clauses = models.TextField(blank=True, null=True)
+    name = models.CharField(
+        max_length=25,
+        null=True,
+        blank=True,
+        unique=True
+    )
+    lv = models.IntegerField(default=1)
+    exp = models.IntegerField(default=0)
+    next_lv = models.IntegerField(default=5)
+    join_date = models.DateTimeField(auto_now_add=True)
+    battle_counter = models.IntegerField(default=0)
+    badge_counter = models.IntegerField(default=0)
+    leagues_counter = models.IntegerField(default=0)
+    win_percentage = models.FloatField(default=0)
+    loose_percentage = models.FloatField(default=0)
+    total_wins = models.IntegerField(default=0)
+    total_losses = models.IntegerField(default=0)
+    # nintendo friend club ID
+    fc = models.CharField(max_length=20, blank=True, null=True, unique=True)
+    # pokemon showdown ID (usually a nickname)
+    sd_id = models.CharField(max_length=50, blank=True, null=True, unique=True)
+    # usuario discord
+    discord_id = models.CharField(max_length=80, blank=True, null=True, unique=True)
 
 
 class Score(models.Model):

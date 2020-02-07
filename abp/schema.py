@@ -100,7 +100,7 @@ class LeaderType(graphene.ObjectType):
     fc = graphene.String()
     sd_id = graphene.String()
     exp = graphene.Int()
-    discord_id = graphene.Int()
+    discord_id = graphene.String()
 
     class Meta:
         interfaces = (graphene.relay.Node,)
@@ -276,7 +276,7 @@ class Query(object):
         loose_percentage__lte=graphene.Float(
             description='Trainers loose percentage less equal the given value.'
         ),
-        discord_id=graphene.String(
+        discord_id__icontains=graphene.String(
             description='Trainer by discord user ID'
         ),
     )
@@ -427,18 +427,18 @@ class CreateLeader(graphene.relay.ClientIDMutation):
     )
 
     class Input:
-        name = graphene.String(required=True)
+        discord_id = graphene.String(required=True)
         pokemon_type = PokemonTypes(required=True)
         role = Role(required=True)
 
     def mutate_and_get_payload(self, info, **_input):
-        name = _input.get('name')
+        discord_id = _input.get('discord_id')
         pokemon_type = _input.get('pokemon_type')
         role = _input.get('role')
 
         try:
             leader = Leader.objects.create(
-                name=name,
+                discord_id=discord_id,
                 pokemon_type=pokemon_type,
                 role=role
             )
