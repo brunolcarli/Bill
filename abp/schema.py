@@ -691,22 +691,18 @@ class LeagueRegistration(graphene.relay.ClientIDMutation):
     registration = graphene.String()
 
     class Input:
-        trainer = graphene.ID(
+        discord_id = graphene.ID(
             required=True
         )
         league = graphene.ID(
             required=True
         )
+        is_trainer = graphene.Boolean(required=True)
 
     def mutate_and_get_payload(self, info, **_input):
-        trainer_global_id = _input.get('trainer')
+        discord_id = _input.get('discord_id')
         league_global_id = _input.get('league')
-
-        kind, trainer_id = from_global_id(trainer_global_id)
-        if not kind == 'TrainerType':
-            raise Exception(
-                'Wrong Trainer ID was given.'
-            )
+        is_trainer = _input.get('is_trainer')
 
         kind, league_id = from_global_id(league_global_id)
         if not kind == 'LeagueType':
@@ -714,13 +710,8 @@ class LeagueRegistration(graphene.relay.ClientIDMutation):
                 'Wrong League ID was given.'
             )
 
-        try:
-            trainer = Trainer.objects.get(id=trainer_id)
-        except Trainer.DoesNotExist:
-            raise Exception(
-                'Sorry, this trainer does not exist.'
-            )
-
+        # Verifica se a liga existe
+        # TODO verificar se a liga ja nao foi encerrada
         try:
             league = League.objects.get(id=league_id)
         except League.DoesNotExist:
@@ -728,97 +719,70 @@ class LeagueRegistration(graphene.relay.ClientIDMutation):
                 'Sorry, this league does not exist.'
             )
 
-        if trainer in league.competitors.all():
-            raise Exception('This trainer is already registered in this league')
-
-        # TODO verificar se a liga ja nao foi encerrada
-        league.competitors.add(trainer)
-        league.save()
-
-        trainer.leagues_counter += 1
-        trainer.save()
-
-        # Cria um score do treinador para esta liga
-        score = Score.objects.create(
-            trainer=trainer,
-            league=league
-        )
-        score.save()
-
-        return LeagueRegistration(
-            f'{trainer.name} registration at {league.reference} complete!'
-        )
-
-
-class LeaderRegistration(graphene.relay.ClientIDMutation):
-    """
-    Register a leader in a league.
-    """
-    response = graphene.String()
-
-    class Input:
-        leader = graphene.ID(required=True)
-        league = graphene.ID(required=True)
-
-    def mutate_and_get_payload(self, info, **_input):
-        leader_global_id = _input.get('leader')
-        league_global_id = _input.get('league')
-
-        # verifica que o id de lider é realmente um id de lider
-        kind, leader_id = from_global_id(leader_global_id)
-        if not kind == 'LeaderType':
-            raise Exception('Wrong leader ID.')
-
-        try:
-            leader = Leader.objects.get(id=leader_id)
-        except Leader.DoesNotExist:
-            raise Exception('Sorry, this leader does not exist.')
-
-        # verifica que o id da liga é realmente um id de liga
-        kind, league_id = from_global_id(league_global_id)
-        if not kind == 'LeagueType':
-            raise Exception('Wrong league ID.')
-
-        try:
-            league = League.objects.get(id=league_id)
-        except League.DoesNotExist:
-            raise Exception('Sorry, this league does not exist.')
-
-        # verifica se o lider ja esta registrado nesta liga
-        if leader in league.gym_leaders.all() or \
-            leader in league.elite_four.all() or \
-            leader == league.champion:
-            raise Exception('This leader is already registered in this league!')
-
-        # verifica para qual função o líder foi designado
-        if leader.role == 'Gym Leader':
-            league.gym_leaders.add(leader)
-
-        elif leader.role == 'Elite Four':
-            if not len(league.elite_four.all()) < 4:
-                raise Exception('The league elite four is already fullfilled')
-            league.elite_four.add(leader)
-
-        elif leader.role == 'Champion':
-            if not league.champion:
-                league.champion = leader
-            else:
+        if is_trainer:
+            try:
+                trainer = Trainer.objects.get(discord_id=discord_id)
+            except Trainer.DoesNotExist:
                 raise Exception(
-                    'This league champion has already been registered'
+                    'Sorry, this trainer does not exist.'
                 )
 
-        else:
-            raise Exception(
-                'This leader has no role yet. Please give him a role before' \
-                'registering at this league!'
+            if trainer in league.competitors.all():
+                raise Exception(
+                    'This trainer is already registered in this league'
+                )
+            league.competitors.add(trainer)
+            league.save()
+            trainer.leagues_counter += 1
+            trainer.save()
+
+            # Cria um score do treinador para esta liga
+            score = Score.objects.create(
+                trainer=trainer,
+                league=league
             )
+            score.save()
 
-        league.save()
-        leader.save()
+        else:
+            try:
+                leader = Leader.objects.get(discord_id=discord_id)
+            except Leader.DoesNotExist:
+                raise Exception(
+                    'Sorry, this leader does not exist.'
+                )
 
-        return LeaderRegistration(
-            f'The leader {leader.name} has been registered ' \
-            f'at league {league.reference}'
+            # verifica se o lider ja esta registrado nesta liga
+            if leader in league.gym_leaders.all() or \
+                leader in league.elite_four.all() or \
+                leader == league.champion:
+                raise Exception(
+                    'This leader is already registered in this league!'
+                )
+
+            # verifica para qual função o líder foi designado
+            if leader.role == 'Gym Leader':
+                league.gym_leaders.add(leader)
+
+            elif leader.role == 'Elite Four':
+                if not len(league.elite_four.all()) < 4:
+                    raise Exception('The league elite four is already fullfilled')
+                league.elite_four.add(leader)
+
+            elif leader.role == 'Champion':
+                if not league.champion:
+                    league.champion = leader
+                else:
+                    raise Exception(
+                        'This league champion has already been registered'
+                    )
+            else:
+                raise Exception(
+                    'This leader has no role yet. Please give him a role before' \
+                    'registering at this league!'
+                )
+
+        return LeagueRegistration(
+            f'registration at {league.reference} complete!'
         )
 
 
@@ -1043,7 +1007,6 @@ class Mutation:
 
     # Other
     league_registration = LeagueRegistration.Field()
-    leader_registration = LeaderRegistration.Field()
     battle_register = BattleRegister.Field()
     add_badge_to_trainer = AddBadgeToTrainer.Field()
     auto_create_badges = AutoCreateBadges.Field()
