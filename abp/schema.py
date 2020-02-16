@@ -727,6 +727,7 @@ class LeagueRegistration(graphene.relay.ClientIDMutation):
                     'Sorry, this trainer does not exist.'
                 )
 
+            # se o jogador ja estiver registrado nesta liga
             if trainer in league.competitors.all():
                 raise Exception(
                     'This trainer is already registered in this league'
@@ -744,6 +745,7 @@ class LeagueRegistration(graphene.relay.ClientIDMutation):
             score.save()
 
         else:
+            # Verifica se o lider existe no banco de dados
             try:
                 leader = Leader.objects.get(discord_id=discord_id)
             except Leader.DoesNotExist:
@@ -794,15 +796,15 @@ class BattleRegister(graphene.relay.ClientIDMutation):
 
     class Input:
         league = graphene.ID(required=True)
-        trainer_name = graphene.String(required=True)
-        leader_name = graphene.String(required=True)
-        winner_name = graphene.String(required=True)
+        trainer = graphene.String(required=True)
+        leader = graphene.String(required=True)
+        winner = graphene.String(required=True)
 
     def mutate_and_get_payload(self, info, **_input):
         league_global_id = _input.get('league')
-        trainer_name = _input.get('trainer_name')
-        leader_name = _input.get('leader_name')
-        winner = _input.get('winner_name')
+        trainer_discord = _input.get('trainer')
+        leader_discord = _input.get('leader')
+        winner = _input.get('winner')
 
         # Verifica a liga fornecida
         kind, league_id = from_global_id(league_global_id)
@@ -816,19 +818,15 @@ class BattleRegister(graphene.relay.ClientIDMutation):
 
         # Tenta recupera o treiandor
         try:
-            trainer = Trainer.objects.get(name=trainer_name)
+            trainer = Trainer.objects.get(discord_id=trainer_discord)
         except Trainer.DoesNotExist:
-            raise Exception(
-                f'Trainer {trainer_name} not found on database!'
-            )
+            raise Exception('Trainer was not found on database!')
 
         # Tenta recupera o líder
         try:
-            leader = Leader.objects.get(name=leader_name)
+            leader = Leader.objects.get(discord_id=leader_discord)
         except Leader.DoesNotExist:
-            raise Exception(
-                f'Trainer {leader_name} not found on database!'
-            )
+            raise Exception('Trainer not found on database!')
 
         # Recupera o score do treinador
         try:
@@ -840,7 +838,7 @@ class BattleRegister(graphene.relay.ClientIDMutation):
             )
 
         # Verifica que o vencedor é um dos dois fornecidos
-        if not winner == trainer.name and not winner == leader.name:
+        if not winner == trainer.discord_id and not winner == leader.discord_id:
             raise Exception('The winner must be the given leader or trainer.')
 
         # Registra a batalha
@@ -862,7 +860,7 @@ class BattleRegister(graphene.relay.ClientIDMutation):
         exp = get_exp(trainer.lv, leader.lv)
 
         # Se o vencedor for o treinador
-        if winner == trainer.name:
+        if winner == trainer_discord:
             # Atualiza os stats dos lutadores e do score
             trainer.total_wins += 1
             trainer_score.wins += 1
@@ -870,7 +868,7 @@ class BattleRegister(graphene.relay.ClientIDMutation):
 
             # Adiciona experiência e recalcula o Lv
             trainer.exp += exp
-            leader.exp += ceil(exp/2)
+            leader.exp += ceil(exp/4)
             lv_update(trainer)
             lv_update(leader)
 
@@ -882,7 +880,7 @@ class BattleRegister(graphene.relay.ClientIDMutation):
             leader.total_wins += 1
 
             # Adiciona experiência e recalcula o Lv
-            trainer.exp += ceil(exp/2)
+            trainer.exp += ceil(exp/4)
             leader.exp += exp
             lv_update(trainer)
             lv_update(leader)
