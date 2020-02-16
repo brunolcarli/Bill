@@ -310,6 +310,9 @@ class Query(object):
         loose_percentage__lte=graphene.Float(
             description='Leaders loose percentage less equal the given value.'
         ),
+        discord_id__icontains=graphene.String(
+            description='Leaders by discord id'
+        ),
     )
     def resolve_leaders(self, info, **kwargs):
         return resolve_leaders(**kwargs)
@@ -513,32 +516,35 @@ class UpdateTrainer(graphene.relay.ClientIDMutation):
     )
 
     class Input:
-        id = graphene.ID(
+        discord_id = graphene.ID(
             required=True
         )
         name = graphene.String()
+        fc = graphene.String()
+        sd_id =graphene.String()
 
     def mutate_and_get_payload(self, info, **_input):
-        global_id = _input.get('id')
+        discord_id = _input.get('discord_id')
         name = _input.get('name')
-
-        kind, trainer_id = from_global_id(global_id)
-
-        # Check if is the right ID
-        if not kind == 'TrainerType':
-            raise Exception(
-                'Wrong Trainer ID.'
-            )
+        fc = _input.get('fc')
+        sd_id = _input.get('sd_id')
 
         try:
-            trainer = Trainer.objects.get(id=trainer_id)
+            trainer = Trainer.objects.get(discord_id=discord_id)
         except Trainer.DoesNotExist:
             raise Exception(
                 'Sorry, the given trainer does not exist!'
             )
 
         if name:
-            trainer.nickname = nickname
+            trainer.name = name
+
+        if fc:
+            trainer.fc = fc
+
+        if sd_id:
+            trainer.sd_id = sd_id
+
         trainer.save()
         return UpdateTrainer(trainer)
 
@@ -905,12 +911,12 @@ class AddBadgeToTrainer(graphene.relay.ClientIDMutation):
     response = graphene.String()
 
     class Input:
-        trainer_name = graphene.String(required=True)
+        discord_id = graphene.String(required=True)
         badge = graphene.String(required=True)
         league = graphene.ID(required=True)
 
     def mutate_and_get_payload(self, info, **_input):
-        trainer_name = _input.get('trainer_name')
+        discord_id = _input.get('discord_id')
         badge_reference = _input.get('badge').title()
         league_global_id = _input.get('league')
 
@@ -931,9 +937,9 @@ class AddBadgeToTrainer(graphene.relay.ClientIDMutation):
 
         # Tenta recuperar o treinador
         try:
-            trainer = Trainer.objects.get(name=trainer_name)
+            trainer = Trainer.objects.get(discord_id=discord_id)
         except Trainer.DoesNotExist:
-            raise Exception(f'The trainer {trainer_name} does not exist')
+            raise Exception(f'The trainer does not exist')
 
         # Recupera o score do treinador
         try:
@@ -956,7 +962,7 @@ class AddBadgeToTrainer(graphene.relay.ClientIDMutation):
         trainer.save()
 
         return AddBadgeToTrainer(
-            f'{trainer_name} received {badge_reference} badge!'
+            f'{discord_id} received {badge_reference} badge!'
         )
 
 
