@@ -7,3 +7,6 @@ migrate:
 
 run:
 	python manage.py runserver 0.0.0.0:3122 --settings=bill.settings.development
+
+shell:
+	python manage.py shell --settings=bill.settings.development
