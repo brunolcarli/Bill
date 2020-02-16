@@ -558,32 +558,46 @@ class UpdateLeader(graphene.relay.ClientIDMutation):
     )
 
     class Input:
-        id = graphene.ID(required=True)
+        discord_id = graphene.ID(required=True)
         name = graphene.String(required=False)
         pokemon_type = PokemonTypes(required=False)
         role = Role(required=False)
+        fc = graphene.String(required=False)
+        sd_id = graphene.String(required=False)
+        clauses = graphene.String(required=False)
 
     def mutate_and_get_payload(self, info, **_input):
-        global_id = _input.get('id')
-        name = _input.get('name', '')
-        pokemon_type = _input.get('pokemon_type', '')
-        role = _input.get('role', '')
-
-        kind, leader_id = from_global_id(global_id)
-        if not kind == 'LeaderType':
-            raise Exception('Wrong leader ID.')
+        discord_id = _input.get('discord_id')
+        name = _input.get('name')
+        pokemon_type = _input.get('pokemon_type')
+        role = _input.get('role')
+        fc = _input.get('fc')
+        sd_id = _input.get('sd_id')
+        clauses = _input.get('clauses')
 
         try:
-            leader = Leader.objects.get(id=leader_id)
+            leader = Leader.objects.get(discord_id=discord_id)
         except Leader.DoesNotExist:
             raise Exception('Sorry, this leader does not exist.')
 
         if name:
-            leader.nickname = nickname
+            leader.name = name
+
         if pokemon_type:
             leader.pokemon_type = pokemon_type
+
         if role:
             leader.role = role
+
+        if fc:
+            leader.fc = fc
+
+        if sd_id:
+            leader.sd_id = sd_id
+
+        if clauses:
+            leader.clauses = clauses
+
         leader.save()
         return UpdateLeader(leader)
 
