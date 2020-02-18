@@ -468,9 +468,7 @@ class UpdateLeague(graphene.relay.ClientIDMutation):
         start_date = graphene.Date(required=False)
         end_date = graphene.Date(required=False)
         description = graphene.String(required=False)
-        id = graphene.ID(
-            required=True
-        )
+        id = graphene.ID(required=True)
 
     def mutate_and_get_payload(self, info, **_input):
         reference = _input.get('reference', '')
