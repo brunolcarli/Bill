@@ -329,6 +329,9 @@ class Query(object):
         trainer__id__in=graphene.List(
             graphene.ID,
             description='Scores from the given trainers.'
+        ),
+        trainer__discord_id=graphene.String(
+            description='Filter scores by trainer discord id'
         )
     )
     def resolve_scores(self, info, **kwargs):
