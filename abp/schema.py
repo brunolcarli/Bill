@@ -3,7 +3,7 @@ import graphene
 from abp.models import (Battle, League, Trainer, Score, Leader, Badge)
 from graphql_relay import from_global_id
 from abp.resolvers import (resolve_leagues, resolve_trainers, resolve_leaders,
-                           resolve_scores, resolve_battles)
+                           resolve_scores, resolve_battles, resolve_standby)
 from abp.utils import get_exp, lv_update
 
 
@@ -146,6 +146,7 @@ class ScoreType(graphene.ObjectType):
     losses = graphene.Int()
     battles = graphene.relay.ConnectionField('abp.schema.BattleConnection')
     badges = graphene.List(graphene.String)
+    standby = graphene.Boolean()
 
     def resolve_league(self, info, **kwargs):
         return self.league
@@ -158,6 +159,9 @@ class ScoreType(graphene.ObjectType):
 
     def resolve_badges(self, info, **kwargs):
         return [badge.reference for badge in self.badges.all()]
+
+    def resolve_standby(self, info, **kwargs):
+        return resolve_standby(self)
 
     class Meta:
         interfaces = (graphene.relay.Node,)
@@ -861,6 +865,12 @@ class BattleRegister(graphene.relay.ClientIDMutation):
         # Verifica que o vencedor é um dos dois fornecidos
         if not winner == trainer.discord_id and not winner == leader.discord_id:
             raise Exception('The winner must be the given leader or trainer.')
+
+        # Verifica se o treinador está de molho
+        if resolve_standby(trainer_score):
+            raise Exception(
+                'This trainer is in standby in this league and cant battle.'
+            )
 
         # Registra a batalha
         battle = Battle.objects.create(

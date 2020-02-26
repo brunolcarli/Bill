@@ -1,9 +1,9 @@
 """
 Módulo contendo os métodos de resolução de objetos para as consultas GraphQL.
 """
+from datetime import datetime
 from abp.models import (Battle, League, Trainer, Score, Leader, Badge)
 from abp.utils import validate_global_id
-
 
 
 def resolve_leagues(**kwargs):
@@ -73,3 +73,22 @@ def resolve_battles(**kwargs):
         kwargs['trainer__id__in'] = trainer_ids
 
     return Battle.objects.filter(**kwargs)
+
+
+def resolve_standby(score_instance):
+    """
+    Um jogador ficará em standby (de molho) por 3 dias se tiver perdido a
+    última batalha.
+    """
+    last_battle = score_instance.battles.last()
+    # Se não houver uma última batalha é porque o jogador ainda não batalhou
+    if not last_battle:
+        return False
+    if last_battle.winner_name != last_battle.trainer.discord_id:
+        now = datetime.now()
+        time_passed = now - last_battle.battle_datetime.replace(tzinfo=None)
+        if time_passed.days < 3:
+            return True
+        return False
+
+    return False
