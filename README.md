@@ -8,7 +8,7 @@ ABP Backend
 
 <hr />
 
->![Generic badge](https://img.shields.io/badge/version-0.0.8-silver.svg)
+>![Generic badge](https://img.shields.io/badge/version-0.1.0-silver.svg)
 [![Generic badge](https://img.shields.io/badge/docs-blue.svg)](https://github.com/brunolcarli/Bill/wiki)
 
 Demo:
