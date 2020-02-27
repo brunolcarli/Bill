@@ -12,8 +12,8 @@ RUN apk add --no-cache \
             linux-headers \
             gcc
 
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+COPY bill/docker.txt .
+RUN pip install -r docker.txt
 
 COPY . .
 

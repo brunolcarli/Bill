@@ -10,3 +10,7 @@ run:
 
 shell:
 	python manage.py shell --settings=bill.settings.development
+
+container:
+	docker-compose build
+	docker-compose up
