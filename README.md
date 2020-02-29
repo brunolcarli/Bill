@@ -8,8 +8,10 @@ ABP Backend
 
 <hr />
 
->![Generic badge](https://img.shields.io/badge/version-0.1.1-silver.svg)
-[![Generic badge](https://img.shields.io/badge/docs-blue.svg)](https://github.com/brunolcarli/Bill/wiki)
+>![Version badge](https://img.shields.io/badge/version-0.1.1-silver.svg)
+![GraphQl Badge](https://badgen.net/badge/icon/graphql/pink?icon=graphql&label)
+[![Docs Link](https://badgen.net/badge/docs/github_wiki?icon=github)](https://github.com/brunolcarli/Bill/wiki)
+
 
 Demo:
 > [![Run on Repl.it](https://repl.it/badge/github/brunolcarli/Bill)](https://Bill-1.brunolcarli.repl.co/graphql/)
@@ -35,10 +37,7 @@ Crie um arquivo `env` contendo as configurações de ambiente:
 
 ```
 export DJANGO_SECRET_KEY=<sua_django_secret_key>
-export DB_NAME=<seu_db_name>
-export DB_USER=<seu_db_user>
-export DB_PASS=<seu_db_password>
-export DB_PORT=<sua_porta_padra_para_o_db>
+export DJANGO_SETTINGS_MODULE=bill.settings.development
 ```
 
 Acione as variáveis de ambiente:
