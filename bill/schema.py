@@ -9,14 +9,15 @@ queries = (
 
 mutations = (
     graphene.ObjectType,
+    abp.Mutation
 )
 
 class Query(*queries):
     pass
 
 
-# class Mutation(*mutations):
-#     pass
+class Mutation(*mutations):
+    pass
 
 
-schema = graphene.Schema(query=Query)
+schema = graphene.Schema(query=Query, mutation=Mutation)

@@ -1,0 +1,37 @@
+  
+version: '3'
+
+services:
+
+  bill_db:
+    image: mariadb:10.3
+    env_file: env/bill.env
+    ports:
+      - "3306:3306"
+
+  bill:
+    build: .    
+    image: bill:devel
+    restart: on-failure
+    container_name: bill_container
+    command: gunicorn -w 3 bill.wsgi:application -b :3122
+    env_file: env/bill.env
+    volumes:
+      - .:/app
+      - static_data:/app/static
+    ports:
+      - "3122:3122"
+    depends_on:
+      - bill_db
+
+  migration:
+    build: .    
+    image: bill:devel
+    restart: on-failure
+    container_name: migrations
+    command: python manage.py migrate
+    env_file: env/bill.env
+
+
+volumes:
+  static_data:
