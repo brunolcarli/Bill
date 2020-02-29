@@ -5,6 +5,7 @@ from graphql_relay import from_global_id
 from abp.resolvers import (resolve_leagues, resolve_trainers, resolve_leaders,
                            resolve_scores, resolve_battles, resolve_standby)
 from abp.utils import get_exp, lv_update
+from bill.settings.common import __version__
 
 
 #######################################################
@@ -364,6 +365,13 @@ class Query(object):
     badges = graphene.String()
     def resolve_badges(self, info, **kwargs):
         return [badge.reference for badge in Badge.objects.all()]
+
+    ###################################################
+    #                       API Version
+    ###################################################
+    api_version = graphene.String(description='Returns the API actual version')
+    def resolve_api_version(self, info, **kwargs):
+        return __version__
 
 
 #######################################################
