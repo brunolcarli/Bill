@@ -24,14 +24,6 @@ services:
     depends_on:
       - bill_db
 
-  migration:
-    build: .    
-    image: bill:devel
-    restart: on-failure
-    container_name: migrations
-    command: python manage.py migrate
-    env_file: env/bill.env
-
 
 volumes:
   static_data:
